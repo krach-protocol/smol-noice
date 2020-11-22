@@ -5,7 +5,6 @@
 # ==========================================
 
 include component.mk
-
 #We try to detect the OS we are running on, and adjust commands as needed
 ifeq ($(OSTYPE),cygwin)
 	CLEANUP = rm -f
@@ -31,14 +30,14 @@ endif
 COMPILE=gcc
 
 CFLAGS = -std=c99
-CFLAGS += -Wall
+#CFLAGS += -Wall
 CFLAGS += -Wextra
 CFLAGS += -Werror 
 CFLAGS += -Wpointer-arith
 CFLAGS += -Wcast-align
 CFLAGS += -Wwrite-strings
-# CFLAGS += -Wswitch-default
-# CFLAGS += -Wunreachable-code
+#CFLAGS += -Wswitch-default
+CFLAGS += -Wunreachable-code
 CFLAGS += -Winit-self
 CFLAGS += -Wmissing-field-initializers
 CFLAGS += -Wno-unknown-pragmas
@@ -49,34 +48,38 @@ CFLAGS += -Wmissing-prototypes
 CFLAGS += -Wmissing-declarations
 CFLAGS += -DUNITY_FIXTURES
 
-CFLAGS += -Wno-unused-parameter
+#CFLAGS += -Wno-unused-parameter
 
 #####################################################
 # PATHS
 #####################################################
 
 # libraries
-APP_LIBRARIES = sodium
+APP_LIBRARIES = sodium noiseprotocol
 
-#app
-PATH_APP_SRC = $(COMPONENT_SRCDIRS)
-PATH_APP_INC = $(COMPONENT_ADD_INCLUDEDIRS) $(COMPONENT_PRIV_INCLUDEDIRS)
-        
-#tests
-PATH_TEST_SRC = tests/
-PATH_TEST_RUNNERS = $(PATH_TEST_SRC)runner/
 #unity
 PATH_UNITY_ROOT=libs/Unity/
 
 #noise-c
 PATH_NOISE_ROOT=libs/noise-c/
-NOISE_SYMBOLS= USE_SODIUM=1 USE_LIBSODIUM=1 USE_OPENSSL=0
+
+#app
+PATH_APP_SRC = $(COMPONENT_SRCDIRS)
+PATH_APP_INC = $(COMPONENT_ADD_INCLUDEDIRS) $(COMPONENT_PRIV_INCLUDEDIRS) $(PATH_NOISE_ROOT)build/include/ 
+        
+#tests
+PATH_TEST_SRC = tests/
+PATH_TEST_RUNNERS = $(PATH_TEST_SRC)runner/
+
+#NOISE_SYMBOLS= USE_SODIUM=1 USE_LIBSODIUM=1 USE_OPENSSL=0
+
 #Directories to create
 PATH_BUILD          = build/
 PATH_BUILD_RESULTS  = $(PATH_BUILD)results/
 PATH_BUILD_OBJS     = $(PATH_BUILD)objs/ #TODO
 PATH_BUILD_DEPENDS  = $(PATH_BUILD)depends/ #TODO
 PATH_DOCS           = docs/
+
 #Variable used during build call
 BUILD_THE_PATHS     =\
    $(PATH_BUILD) \
@@ -91,7 +94,7 @@ SOURCE_TEST = $(wildcard $(PATH_TEST_SRC)*.c)
 SOURCE_TEST_RUNNERS = $(wildcard $(PATH_TEST_RUNNERS)*.c)
 SOURCE_APP = $(foreach src_dir, $(PATH_APP_SRC), $(wildcard $(src_dir)/*.c)) #$(wildcard $(scr_dir)/*.c)
 APP_INC_DIRS = $(foreach inc_dir, $(PATH_APP_INC), -I$(inc_dir))
-LIBRARY_FLAGS = $(foreach lib, $(APP_LIBRARIES), -l$(lib))
+LIBRARY_FLAGS = -L$(PATH_NOISE_ROOT)build/lib/ $(foreach lib, $(APP_LIBRARIES), -l$(lib))
 
 #####################################################
 # RESULTS 
@@ -153,4 +156,11 @@ print:
 clean:
 	$(CLEANUP_DIR) $(PATH_BUILD)
 
-config:
+
+noise-config:
+	$(MKDIR) $(PATH_NOISE_ROOT)build
+	cd $(PATH_NOISE_ROOT) && ./configure --prefix=$(CURDIR)/$(PATH_NOISE_ROOT)build --with-libsodium
+noise-install: noise-config
+	cd $(PATH_NOISE_ROOT) && make install
+noise-clean:
+	cd $(PATH_NOISE_ROOT) && make distclean
