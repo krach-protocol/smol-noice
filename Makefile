@@ -159,7 +159,7 @@ clean:
 
 noise-config:
 	$(MKDIR) $(PATH_NOISE_ROOT)build
-	cd $(PATH_NOISE_ROOT) && ./configure --prefix=$(CURDIR)/$(PATH_NOISE_ROOT)build --with-libsodium
+	cd $(PATH_NOISE_ROOT) && autoreconf -i && ./configure --prefix=$(CURDIR)/$(PATH_NOISE_ROOT)build --with-libsodium
 noise-install: noise-config
 	cd $(PATH_NOISE_ROOT) && make install
 noise-clean:
