@@ -1,6 +1,3 @@
-[submodule "libs/--force"]
-	path = libs/--force
-	url = https://github.com/smolcert/smolcert-esp32
 [submodule "libs/smolcert-esp32"]
 	path = libs/smolcert-esp32
 	url = https://github.com/smolcert/smolcert-esp32
