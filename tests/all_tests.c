@@ -154,7 +154,7 @@ int main(void) {
     UNITY_BEGIN();
     //RUN_TEST(test_Parsing_valid_smolcert);
     //RUN_TEST(test_ValidateCertificateSignature);
-    RUN_TEST(test_parseCertFromfile);
+    //RUN_TEST(test_parseCertFromfile);
     RUN_TEST(test_makeNoiseHandshake);
     return UNITY_END();
 }
