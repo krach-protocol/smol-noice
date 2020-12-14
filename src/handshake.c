@@ -6,7 +6,7 @@
 
 #include <noise/protocol.h>
 //#include <noise/protocol/symmetricstate.h>
-//#include <noise/protocol/internal.h>
+//#include <internal.h>
 
 #define PROTOCOL "KRACH_XX_25519_CHACHAPOLY_BLAKE2S"
 
@@ -31,20 +31,24 @@ sc_err_t readMessageDHES(NoiseHandshakeState handshakeState, char* message);
  *  Nice function for all sanity checks: noise_handshakestate_get_action 
  *  http://rweather.github.io/noise-c/group__symmetricstate.html
  * 
+ * 
+ * TODO: Implement own message type + handler
+ * 
+ * 
 */
 
 sc_err_t sc_init(NoiseHandshakeState handshakeState){
     int err;
     NoiseDHState* dhState; 
 
-    err = noise_handshakestate_new_by_name(&handshakeState,PROTOCOL, NOISE_ROLE_INITIATOR);
+    err = NOISE_ERROR_NONE;//((&handshakeState),PROTOCOL, NOISE_ROLE_INITIATOR);
     if (err != NOISE_ERROR_NONE) {
         noise_perror(PROTOCOL, err);
         return SC_ERR;
     }   
 
     // Set up local keypair 
-    dhState = noise_handshakestate_get_local_keypair_dh(handshakeState);
+    dhState = noise_handshakestate_get_local_keypair_dh(&handshakeState);
     if(noise_dhstate_set_role(dhState,NOISE_ROLE_INITIATOR) != NOISE_ERROR_NONE) return SC_ERR;	
     //TODO: Seed system RNG 
     if(noise_dhstate_generate_keypair(dhState) != NOISE_ERROR_NONE) return SC_ERR;	
@@ -54,16 +58,18 @@ sc_err_t sc_init(NoiseHandshakeState handshakeState){
 
 
 sc_err_t sc_destory(NoiseHandshakeState handshakeState){
-    noise_handshakestate_free(handshakeState);
+    noise_handshakestate_free(&handshakeState);
     return SC_OK;
 }
 
 sc_err_t writeMessageE(NoiseHandshakeState handshakeState,char* message){
     NoiseDHState* dhState;   
+    //struct NoiseHandshakeState_s test;
+    NoiseSymmetricState *symmState = handshakeState.symmetric;
     size_t pubKeyLen;
     uint8_t* pubKey;
     
-    dhState = noise_handshakestate_get_local_keypair_dh(handshakeState);
+    dhState = noise_handshakestate_get_local_keypair_dh(&handshakeState);
     pubKeyLen = noise_dhstate_get_public_key_length(dhState);
     pubKey = (uint8_t*)malloc(pubKeyLen);
     
@@ -71,13 +77,13 @@ sc_err_t writeMessageE(NoiseHandshakeState handshakeState,char* message){
     
     if(strncat(message,pubKey,pubKeyLen) == NULL) return SC_ERR;
 
-    if(noise_symmetricstate_mix_hash(handshakeState,pubKey,pubKeyLen) != NOISE_ERROR_NONE) return SC_ERR;
+    if(noise_symmetricstate_mix_hash(symmState,pubKey,pubKeyLen) != NOISE_ERROR_NONE) return SC_ERR;
 
    	return SC_OK;
 }
 
 
-sc_err_t writeMessageS(NoiseHandshakeState handshakeState,char* message){
+sc_err_t writeMessageS(NoiseHandshakeState handshakeState, char* message){
     NoiseSymmetricState symmState;
         //TODO A lot of sanity checks missing here
 

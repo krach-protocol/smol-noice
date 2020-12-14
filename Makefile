@@ -65,7 +65,7 @@ PATH_NOISE_ROOT=libs/noise-c/
 
 #app
 PATH_APP_SRC = $(COMPONENT_SRCDIRS)
-PATH_APP_INC = $(COMPONENT_ADD_INCLUDEDIRS) $(COMPONENT_PRIV_INCLUDEDIRS) $(PATH_NOISE_ROOT)build/include/ 
+PATH_APP_INC = $(COMPONENT_ADD_INCLUDEDIRS) $(COMPONENT_PRIV_INCLUDEDIRS) $(PATH_NOISE_ROOT)build/include/ $(PATH_NOISE_ROOT)src/protocol
         
 #tests
 PATH_TEST_SRC = tests/
@@ -159,7 +159,7 @@ clean:
 
 noise-config:
 	$(MKDIR) $(PATH_NOISE_ROOT)build
-	cd $(PATH_NOISE_ROOT) && autoreconf -i && ./configure --prefix=$(CURDIR)/$(PATH_NOISE_ROOT)build --with-libsodium
+	cd $(PATH_NOISE_ROOT) && autoreconf -i && ./configure --prefix=$(CURDIR)/$(PATH_NOISE_ROOT)build --with-libsodium CC=$(CC)
 noise-install: noise-config
 	cd $(PATH_NOISE_ROOT) && make install
 noise-clean:
