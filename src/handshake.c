@@ -1,26 +1,25 @@
 #include "handshake.h"
-
 #include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 
 #include <noise/protocol.h>
-//#include <noise/protocol/symmetricstate.h>
-//#include <internal.h>
+
+#include "msg.h"
 
 #define PROTOCOL "KRACH_XX_25519_CHACHAPOLY_BLAKE2S"
 
 //Internal functions
-sc_err_t writeMessageE(NoiseHandshakeState handshakeState,char* message);
-sc_err_t writeMessageS_DHSE(NoiseHandshakeState handshakeState, char* message);
-sc_err_t writeMessageS(NoiseHandshakeState handshakeState,char* message);
-sc_err_t writeMessageDHSE(NoiseHandshakeState handshakeState, char* message);
+sc_err_t writeMessageE(NoiseHandshakeState handshakeState,sc_msg_t *message);
+sc_err_t writeMessageS_DHSE(NoiseHandshakeState handshakeState, sc_msg_t *message);
+sc_err_t writeMessageS(NoiseHandshakeState handshakeState,sc_msg_t *message);
+sc_err_t writeMessageDHSE(NoiseHandshakeState handshakeState, sc_msg_t *message);
 
-sc_err_t readMessageE_DHEE_S_DHES(NoiseHandshakeState handshakeState,char* message);
-sc_err_t readMessageE(NoiseHandshakeState handshakeState, char* message);
-sc_err_t readMessageDHEE(NoiseHandshakeState handshakeState, char* message);
-sc_err_t readMessageS(NoiseHandshakeState handshakeState, char* message);
-sc_err_t readMessageDHES(NoiseHandshakeState handshakeState, char* message);
+sc_err_t readMessageE_DHEE_S_DHES(NoiseHandshakeState handshakeState,sc_msg_t *message);
+sc_err_t readMessageE(NoiseHandshakeState handshakeState, sc_msg_t *message);
+sc_err_t readMessageDHEE(NoiseHandshakeState handshakeState, sc_msg_t *message);
+sc_err_t readMessageS(NoiseHandshakeState handshakeState, sc_msg_t *message);
+sc_err_t readMessageDHES(NoiseHandshakeState handshakeState, sc_msg_t *message);
 
 
 
@@ -31,8 +30,6 @@ sc_err_t readMessageDHES(NoiseHandshakeState handshakeState, char* message);
  *  Nice function for all sanity checks: noise_handshakestate_get_action 
  *  http://rweather.github.io/noise-c/group__symmetricstate.html
  * 
- * 
- * TODO: Implement own message type + handler
  * 
  * 
 */
@@ -62,10 +59,9 @@ sc_err_t sc_destory(NoiseHandshakeState handshakeState){
     return SC_OK;
 }
 
-sc_err_t writeMessageE(NoiseHandshakeState handshakeState,char* message){
-    NoiseDHState* dhState;   
-    //struct NoiseHandshakeState_s test;
+sc_err_t writeMessageE(NoiseHandshakeState handshakeState,sc_msg_t *message){
     NoiseSymmetricState *symmState = handshakeState.symmetric;
+    NoiseDHState *dhState;   
     size_t pubKeyLen;
     uint8_t* pubKey;
     
@@ -75,7 +71,7 @@ sc_err_t writeMessageE(NoiseHandshakeState handshakeState,char* message){
     
     if(noise_dhstate_get_public_key(dhState,pubKey,pubKeyLen) != NOISE_ERROR_NONE) return SC_ERR;
     
-    if(strncat(message,pubKey,pubKeyLen) == NULL) return SC_ERR;
+    if(appendData(message,pubKey,pubKeyLen) != SC_OK) return SC_ERR;
 
     if(noise_symmetricstate_mix_hash(symmState,pubKey,pubKeyLen) != NOISE_ERROR_NONE) return SC_ERR;
 
@@ -83,25 +79,41 @@ sc_err_t writeMessageE(NoiseHandshakeState handshakeState,char* message){
 }
 
 
-sc_err_t writeMessageS(NoiseHandshakeState handshakeState, char* message){
-    NoiseSymmetricState symmState;
-        //TODO A lot of sanity checks missing here
-
-
-    // encryptedSPublic = s.symmState.EncryptAndHash(encryptedSPublic, idBytes)
+sc_err_t writeMessageS(NoiseHandshakeState handshakeState, sc_msg_t *message){
+    NoiseSymmetricState *symmState = handshakeState.symmetric;
+    NoiseBuffer buff;
+    noise_buffer_init(buff);
     
-    int noise_symmetricstate_encrypt_and_hash(NoiseSymmetricState *state,NoiseBuffer * 	buffer );
+        //TODO A lot of sanity checks missing here
+        // check if local pub key is availible
+
+
+    // encryptedSPublic = s.symmState.EncryptAndHash(encryptedSPublic, idBytes) <-- is this right?
+    if( noise_symmetricstate_encrypt_and_hash(symmState,&buff) != NOISE_ERROR_NONE) return SC_ERR;
+
+        //TODO Write buffer to own msg object
 
 	// msg.WriteEncryptedIdentity(encryptedSPublic)
     return SC_OK;
 }
 
-sc_err_t writeMessageDHSE(NoiseHandshakeState handshakeState, char* message){
+sc_err_t writeMessageDHSE(NoiseHandshakeState handshakeState, sc_msg_t *message){
+    NoiseSymmetricState *symmState = handshakeState.symmetric;
+    NoiseDHState *dhStateRemoteEphemeral, *dhStateLocalPrivate;
+    NoiseBuffer buff;
+    noise_buffer_init(buff);
+
     //- s.symmState.MixKey(s.symmState.DH(s.localIdentity.PrivateKey(), s.remoteEphemeralPubKey))
+    
+    //dhStateRemoteEphemeral = noise_handshakestate_get_remote_public_key_dh(handshakeState); // <-- is this the remote eph key?
+    //dhStateLocalPrivate = noise_handshakestate_get_local_keypair_dh(handshakeState); // wat?
+    
+    //if( noise_symmetricstate_mix_key(  ))
+
     return SC_OK;
 }
 
-sc_err_t writeMessageS_DHSE(NoiseHandshakeState handshakeState, char* message){
+sc_err_t writeMessageS_DHSE(NoiseHandshakeState handshakeState, sc_msg_t *message){
     //writeMessageS(handshakeState, message)
     //writeMessageDHSE(handshakeState, message) 
     return SC_OK;
@@ -110,7 +122,7 @@ sc_err_t writeMessageS_DHSE(NoiseHandshakeState handshakeState, char* message){
 
 
 // Read operationss
-sc_err_t readMessageE(NoiseHandshakeState handshakeState, char* message){
+sc_err_t readMessageE(NoiseHandshakeState handshakeState, sc_msg_t *message){
     //TODO Sanity checks missing here
     
     //s.remoteEphemeralPubKey, err = msg.ReadEPublic()
@@ -118,12 +130,12 @@ sc_err_t readMessageE(NoiseHandshakeState handshakeState, char* message){
     return SC_OK;
 }
 
-sc_err_t readMessageDHEE(NoiseHandshakeState handshakeState, char* message){
+sc_err_t readMessageDHEE(NoiseHandshakeState handshakeState, sc_msg_t *message){
     //s.symmState.MixKey(s.symmState.DH(s.ephemeralDHKey.Private, s.remoteEphemeralPubKey))
     return SC_OK;
 }
 
-sc_err_t readMessageS(NoiseHandshakeState handshakeState, char* message){
+sc_err_t readMessageS(NoiseHandshakeState handshakeState, sc_msg_t *message){
     //TODO Sanity checks missing here
     /* idBytes, err := msg.ReadEncryptedIdentity()
 	var decryptedRawIdentity []byte
@@ -140,12 +152,12 @@ sc_err_t readMessageS(NoiseHandshakeState handshakeState, char* message){
    return SC_OK;
 }
 
-sc_err_t readMessageDHES(NoiseHandshakeState handshakeState, char* message){
+sc_err_t readMessageDHES(NoiseHandshakeState handshakeState, sc_msg_t *message){
     //s.symmState.MixKey(s.symmState.DH(s.ephemeralDHKey.Private, s.remoteIdentity.PublicKey()));
     return SC_OK;
 }
 
-sc_err_t readMessageE_DHEE_S_DHES(NoiseHandshakeState handshakeState,char* message){
+sc_err_t readMessageE_DHEE_S_DHES(NoiseHandshakeState handshakeState,sc_msg_t *message){
     readMessageE(handshakeState, message);
     readMessageDHEE(handshakeState, message);
     readMessageS(handshakeState, message);
