@@ -11,13 +11,13 @@
  * */
 
 // length in bytes
-#define PACKET_LEN_LEN          2
-#define VERSION_LEN             1
-#define TYPE_LEN                1
-#define EPHEMERAL_PUB_KEY_LEN   32
-#define MAX_PACKET_LEN          512
+#define SC_PACKET_LEN_LEN          2
+#define SC_VERSION_LEN             1
+#define SC_TYPE_LEN                1
+#define SC_EPHEMERAL_PUB_KEY_LEN   32
+#define SC_MAX_PACKET_LEN          512 //set at runtime
 
-#define VERSION                 0x01
+#define SC_VERSION                 0x01
 
 
 /** Little sidenote:
@@ -34,27 +34,27 @@
 
 sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, uint8_t** msgBuffer, size_t* msgLen){
     uint16_t packetLen;
-    uint8_t version = VERSION;
+    uint8_t version = SC_VERSION;
 
     if(packet->HandshakeType != HANDSHAKE_INIT) return SC_PAKET_ERR;
 
-    packetLen  = PACKET_LEN_LEN + VERSION_LEN + TYPE_LEN + EPHEMERAL_PUB_KEY_LEN;
+    packetLen  = SC_PACKET_LEN_LEN + SC_VERSION_LEN + SC_TYPE_LEN + SC_EPHEMERAL_PUB_KEY_LEN;
 
     *msgLen = (size_t)packetLen;
     *msgBuffer = (uint8_t*)malloc(*msgLen);
 
 
-    memcpy(*msgBuffer,&packetLen, PACKET_LEN_LEN);
-    *msgBuffer += PACKET_LEN_LEN;
+    memcpy(*msgBuffer,&packetLen, SC_PACKET_LEN_LEN);
+    *msgBuffer += SC_PACKET_LEN_LEN;
 
-    memcpy(*msgBuffer,&version, VERSION_LEN);
-    *msgBuffer += VERSION_LEN;
+    memcpy(*msgBuffer,&version, SC_VERSION_LEN);
+    *msgBuffer += SC_VERSION_LEN;
 
 
-    memcpy(*msgBuffer,&(packet->HandshakeType),TYPE_LEN);
-    *msgBuffer += TYPE_LEN;
+    memcpy(*msgBuffer,&(packet->HandshakeType),SC_TYPE_LEN);
+    *msgBuffer += SC_TYPE_LEN;
 
-    memcpy(*msgBuffer,&(packet->ephemeralPubKey),EPHEMERAL_PUB_KEY_LEN);
+    memcpy(*msgBuffer,&(packet->ephemeralPubKey),SC_EPHEMERAL_PUB_KEY_LEN);
 
     return SC_OK;
 }
@@ -64,23 +64,23 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet, uint8_t* ms
     uint8_t version;
     packet = (sc_handshakeResponsePacket*)malloc(sizeof(sc_handshakeResponsePacket));
 
-    memcpy(&(packet->packetLen), msgBuffer,PACKET_LEN_LEN);
-    if((readBytes += PACKET_LEN_LEN) > MAX_PACKET_LEN) return SC_PAKET_ERR;
-    msgBuffer += PACKET_LEN_LEN;
+    memcpy(&(packet->packetLen), msgBuffer,SC_PACKET_LEN_LEN);
+    if((readBytes += SC_PACKET_LEN_LEN) > SC_MAX_PACKET_LEN) return SC_PAKET_ERR;
+    msgBuffer += SC_PACKET_LEN_LEN;
 
-    memcpy(&version,msgBuffer,VERSION_LEN);
-    if((readBytes += VERSION_LEN) > packet->packetLen) return SC_PAKET_ERR;
-    msgBuffer += VERSION_LEN;
-    if(version > VERSION) return SC_PAKET_ERR;
+    memcpy(&version,msgBuffer,SC_VERSION_LEN);
+    if((readBytes += SC_VERSION_LEN) > packet->packetLen) return SC_PAKET_ERR;
+    msgBuffer += SC_VERSION_LEN;
+    if(version > SC_VERSION) return SC_PAKET_ERR;
 
-    memcpy(&(packet->HandshakeType),msgBuffer,TYPE_LEN);
-    if((readBytes += TYPE_LEN) > packet->packetLen) return SC_PAKET_ERR;
-    msgBuffer += TYPE_LEN;
+    memcpy(&(packet->HandshakeType),msgBuffer,SC_TYPE_LEN);
+    if((readBytes += SC_TYPE_LEN) > packet->packetLen) return SC_PAKET_ERR;
+    msgBuffer += SC_TYPE_LEN;
     if(packet->HandshakeType != HANDSHAKE_FIN) return SC_PAKET_ERR;
 
-    memcpy(&(packet->ephemeralPubKey),msgBuffer,EPHEMERAL_PUB_KEY_LEN);
-    if((readBytes += EPHEMERAL_PUB_KEY_LEN) > packet->packetLen) return SC_PAKET_ERR;
-    msgBuffer += EPHEMERAL_PUB_KEY_LEN;
+    memcpy(&(packet->ephemeralPubKey),msgBuffer,SC_EPHEMERAL_PUB_KEY_LEN);
+    if((readBytes += SC_EPHEMERAL_PUB_KEY_LEN) > packet->packetLen) return SC_PAKET_ERR;
+    msgBuffer += SC_EPHEMERAL_PUB_KEY_LEN;
 
     packet->encryptedPayloadLen = packet->packetLen - readBytes;
     memcpy(&(packet->encryptedPayload),msgBuffer,packet->encryptedPayloadLen);
@@ -91,23 +91,23 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet, uint8_t* ms
 
 sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet ,uint8_t** msgBuffer, size_t* msgLen){
     uint16_t packetLen;
-    uint8_t version = VERSION;
+    uint8_t version = SC_VERSION;
 
     if(packet->HandshakeType != HANDSHAKE_FIN) return SC_PAKET_ERR;
     
-    packetLen = PACKET_LEN_LEN + VERSION_LEN + TYPE_LEN + packet->encryptedPayloadLen;
+    packetLen = SC_PACKET_LEN_LEN + SC_VERSION_LEN + SC_TYPE_LEN + packet->encryptedPayloadLen;
     
     *msgLen = (size_t)packetLen;
     *msgBuffer = (uint8_t*)malloc(*msgLen);
 
-    memcpy(*msgBuffer,&packetLen, PACKET_LEN_LEN);
-    *msgBuffer += PACKET_LEN_LEN;
+    memcpy(*msgBuffer,&packetLen, SC_PACKET_LEN_LEN);
+    *msgBuffer += SC_PACKET_LEN_LEN;
 
-    memcpy(*msgBuffer,&version, VERSION_LEN);
-    *msgBuffer += VERSION_LEN;
+    memcpy(*msgBuffer,&version, SC_VERSION_LEN);
+    *msgBuffer += SC_VERSION_LEN;
 
-    memcpy(*msgBuffer,&(packet->HandshakeType),TYPE_LEN);
-    *msgBuffer += TYPE_LEN;
+    memcpy(*msgBuffer,&(packet->HandshakeType),SC_TYPE_LEN);
+    *msgBuffer += SC_TYPE_LEN;
 
     memcpy(*msgBuffer,&(packet->encryptedPayload),packet->encryptedPayloadLen);
     
