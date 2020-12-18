@@ -1,4 +1,5 @@
 #include "handshake.h"
+
 #include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
@@ -6,6 +7,8 @@
 
 #include <noise/protocol.h>
 
+
+#include "port.h"
 #include "sc_packet.h"
 
 #define PROTOCOL "KRACH_XX_25519_CHACHAPOLY_BLAKE2S"
@@ -41,8 +44,8 @@ sc_err_t readMessageDHES(NoiseHandshakeState *handshakeState, sc_handshakeRespon
 */
 
 
-//sc_err_t sc_init(mySmolCert,targetIp);
-sc_err_t sc_init(void){
+
+sc_err_t sc_init(smolcert_t *cert,char *addr,uint16_t port){
     int err;
     sc_err_t sc_err;
     NoiseDHState* dhState; 
@@ -58,8 +61,6 @@ sc_err_t sc_init(void){
 
     err = noise_handshakestate_new_by_id(&handshakeState,krach,NOISE_ROLE_INITIATOR);
     
-
-    err = NOISE_ERROR_NONE;
     if (err != NOISE_ERROR_NONE) {
         noise_perror(PROTOCOL, err);
         return SC_ERR;
