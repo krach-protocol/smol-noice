@@ -5,21 +5,18 @@
 #include <stdlib.h>
 
 #include "sc_err.h"
+#include "sn_msg.h"
 
 typedef enum{HANDSHAKE_INIT,HANDSHAKE_RESPONSE=0x02,HANDSHAKE_FIN,TRANSPORT} sc_packet_type_e;
 
 //HandshakeInit Client -> Server
 typedef struct{ 
-    uint16_t            packetLen;
-    uint8_t*            packetBuffer;
     sc_packet_type_e    HandshakeType;
     uint8_t*            ephemeralPubKey;
 } sc_handshakeInitPacket;
 
 //HandshakeResponse Server -> Client
 typedef struct{
-    uint16_t            packetLen;
-    uint8_t*            packetBuffer;
     sc_packet_type_e    HandshakeType;
     uint8_t*            ephemeralPubKey;
     uint8_t             encryptedPayloadLen;
@@ -28,8 +25,6 @@ typedef struct{
 
 //HandshakeFin Client -> Server
 typedef struct{
-    uint16_t            packetLen;
-    uint8_t*            packetBuffer;
     sc_packet_type_e    HandshakeType;
     uint8_t             encryptedPayloadLen;
     uint8_t*            encryptedPayload;
@@ -37,8 +32,6 @@ typedef struct{
 
 //Transport Server <-> Client
 typedef struct{
-    uint16_t            packetLen;
-    uint8_t*            packetBuffer;
     sc_packet_type_e    PaketType;
     uint8_t             encryptedPayloadLen;
     uint8_t*            encryptedPayload;
@@ -54,7 +47,7 @@ typedef struct{
  *  msgLen:       contains the length of msgBuffer
  *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
  * */
-sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, uint8_t** msgBuffer, size_t* msgLen);
+sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg);
 
 /**
  * Function: packHandshakeFin
@@ -66,7 +59,7 @@ sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, uint8_t** msgBuffer, 
  *  msgLen:       contains the length of msgBuffer
  *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
  * */
-sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet ,uint8_t** msgBuffer, size_t* msgLen);
+sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet ,sn_msg_t *msg);
 
 /**
  * Function: packTransport
@@ -78,7 +71,7 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet ,uint8_t** msgBuffer, si
  *  msgLen:       contains the length of msgBuffer
  *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
  * */
-sc_err_t packTransport(sc_transportPacket* packet, uint8_t* msgBuffer, size_t* msgLen);
+sc_err_t packTransport(sc_transportPacket* packet, sn_msg_t *msg);
 
 
 /**
@@ -91,7 +84,7 @@ sc_err_t packTransport(sc_transportPacket* packet, uint8_t* msgBuffer, size_t* m
  *  msgLen:       contains the length of msgBuffer
  *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
  * */
-sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet, uint8_t* msgBuffer, uint8_t msgLen);
+sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet, sn_msg_t *msg);
 
 
 /**
@@ -104,7 +97,7 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet, uint8_t* ms
  *  msgLen:       contains the length of msgBuffer
  *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
  * */
-sc_err_t unpackTransport(sc_transportPacket* packet, uint8_t* msgBuffer, size_t msgLen);
+sc_err_t unpackTransport(sc_transportPacket* packet, sn_msg_t *msg);
 
 
 
