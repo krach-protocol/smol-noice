@@ -25,11 +25,13 @@ else
 	CLEANUP_DIR = rm -rf
 	MKDIR = mkdir -p
 	TARGET_EXTENSION=.out
+	THREADLIB = pthread
 endif
 
 COMPILE=gcc
 
 CFLAGS = -std=c99
+CFLAGS += -g 
 #CFLAGS += -Wall
 CFLAGS += -Wextra
 CFLAGS += -Werror 
@@ -47,7 +49,6 @@ CFLAGS += -Wold-style-definition
 CFLAGS += -Wmissing-prototypes
 CFLAGS += -Wmissing-declarations
 CFLAGS += -DUNITY_FIXTURES
-
 #CFLAGS += -Wno-unused-parameter
 
 #####################################################
@@ -55,7 +56,7 @@ CFLAGS += -DUNITY_FIXTURES
 #####################################################
 
 # libraries
-APP_LIBRARIES = sodium noiseprotocol
+APP_LIBRARIES = sodium noiseprotocol $(THREADLIB)
 
 #unity
 PATH_UNITY_ROOT=libs/Unity/

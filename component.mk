@@ -1,4 +1,6 @@
 COMPONENT_SRCDIRS := 	src \
+						src/port \
+						src/port/* \
 						libs/tinycbor/src\
 						libs/smolcert-esp32/src 
 COMPONENT_ADD_INCLUDEDIRS := 	inc \
