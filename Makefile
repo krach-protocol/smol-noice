@@ -30,7 +30,7 @@ endif
 
 COMPILE=gcc
 
-CFLAGS = -std=c99
+CFLAGS = -std=gnu99
 CFLAGS += -g 
 #CFLAGS += -Wall
 CFLAGS += -Wextra
