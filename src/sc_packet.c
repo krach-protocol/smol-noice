@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 /** Definitions from here:
  * for humans:      https://github.com/connctd/krach/blob/v2/refactor/spec/index.md
  * for non-humans:  https://github.com/connctd/krach/blob/v2/refactor/spec/protocol.specs
@@ -31,31 +30,33 @@
  * future changes like expanding field sizes and for better readability
  * */
 
-
 sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg){
     uint16_t packetLen;
     uint8_t version = SC_VERSION;
 
     if(packet->HandshakeType != HANDSHAKE_INIT) return SC_PAKET_ERR;
 
-    packetLen  = SC_PACKET_LEN_LEN + SC_VERSION_LEN + SC_TYPE_LEN + SC_EPHEMERAL_PUB_KEY_LEN;
+    packetLen  = SC_VERSION_LEN + SC_TYPE_LEN + SC_EPHEMERAL_PUB_KEY_LEN;
     
-    msg->msgLen = (size_t)packetLen;
+    msg->msgLen = (size_t)packetLen + SC_PACKET_LEN_LEN;
     msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
+    uint8_t* writePtr = msg->msgBuf;
+
+    //Write packet length to buffer and pay due to endianess
+    *writePtr = (packetLen&0xFF00)>>8;
+    writePtr++;
+    *writePtr = (packetLen&0xFF);
+    writePtr++;
+
+    memcpy(writePtr,&version, SC_VERSION_LEN);
+    writePtr += SC_VERSION_LEN;
 
 
-    memcpy(msg->msgBuf,&packetLen, SC_PACKET_LEN_LEN);
-    msg->msgBuf += SC_PACKET_LEN_LEN;
+    memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
+    writePtr += SC_TYPE_LEN;
 
-    memcpy(msg->msgBuf,&version, SC_VERSION_LEN);
-    msg->msgBuf += SC_VERSION_LEN;
-
-
-    memcpy(msg->msgBuf,&(packet->HandshakeType),SC_TYPE_LEN);
-    msg->msgBuf += SC_TYPE_LEN;
-
-    memcpy(msg->msgBuf,&(packet->ephemeralPubKey),SC_EPHEMERAL_PUB_KEY_LEN);
-
+    memcpy(writePtr,packet->ephemeralPubKey,SC_EPHEMERAL_PUB_KEY_LEN);
+    
     return SC_OK;
 }
 
