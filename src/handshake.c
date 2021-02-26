@@ -78,7 +78,7 @@ sc_err_t sc_init(smolcert_t *cert,const char *addr,uint16_t port){
     //set up ephmeral keypair
     // Set up local keypair 
     dhState = noise_handshakestate_get_local_keypair_dh(handshakeState);
-
+   
     //if(noise_dhstate_set_role(dhState,NOISE_ROLE_INITIATOR) != NOISE_ERROR_NONE) return SC_ERR;	
     //TODO: Seed system RNG 
     if(noise_dhstate_generate_keypair(dhState) != NOISE_ERROR_NONE) return SC_ERR;	
@@ -114,7 +114,8 @@ sc_err_t writeMessageE(NoiseHandshakeState *handshakeState,sc_handshakeInitPacke
     printf("PubKeylen: %ld",pubKeyLen);
     if(noise_dhstate_get_public_key(dhState,pubKey,pubKeyLen) != NOISE_ERROR_NONE) return SC_ERR;
     
-    memcpy(&(packet->ephemeralPubKey),pubKey,pubKeyLen);
+    packet->ephemeralPubKey = (uint8_t*)malloc(pubKeyLen);
+    memcpy(packet->ephemeralPubKey,pubKey,pubKeyLen);
 
     if(noise_symmetricstate_mix_hash(symmState,pubKey,pubKeyLen) != NOISE_ERROR_NONE) return SC_ERR;
 
@@ -129,44 +130,47 @@ void* runnerTask(void* arg){
     handshakeSteps currentStep = INIT_NETWORK;
     NoiseHandshakeState *handshakeState = taskData->handshake;
 
-    sc_handshakeInitPacket*     initPaket=NULL;
-    sc_handshakeResponsePacket* responsePaket=NULL;
-    sc_handshakeFinPacket*      finPaket=NULL;
+    sc_handshakeInitPacket     initPaket={0};
+    sc_handshakeResponsePacket responsePaket={0};
+    sc_handshakeFinPacket      finPaket={0};
 
-    sn_msg_t* networkMsg = NULL;
+    sn_msg_t networkMsg = {0};
     printf("Starting main loop\n");
     while(run){
+        sleep_ms(500);
         switch(currentStep){
             case INIT_NETWORK:
                 printf("Init Network\n");
                 if(openSocket(taskData->addr, taskData->port) == 0){
+                    printf("init ok\n");
                     currentStep = SEND_INIT;
                 }else{
+                    printf("error initialing socket\n");
                     currentStep = ERROR;
                 }
             break;
             case SEND_INIT:
                 printf("Send Init\n");
-                sc_err = writeMessageE(handshakeState,initPaket);
-                packHandshakeInit(initPaket,networkMsg);
-                sendOverNetwork(networkMsg);
+                sc_err = writeMessageE(handshakeState,&initPaket);
+                packHandshakeInit(&initPaket,&networkMsg);
+                sendOverNetwork(&networkMsg);
                 currentStep = WAIT_FOR_RES;
             break;    
 
             case WAIT_FOR_RES:
                 printf("Wait for response\n");
-                 if(messageFromNetwork(networkMsg)){
-                    unpackHandshakeResponse(responsePaket,networkMsg);
-                    sc_err = readMessageE_DHEE_S_DHES(handshakeState, responsePaket); 
+                 if(messageFromNetwork(&networkMsg)){
+                    unpackHandshakeResponse(&responsePaket,&networkMsg);
+                    sc_err = readMessageE_DHEE_S_DHES(handshakeState, &responsePaket); 
                     currentStep = SEND_FIN;
                  }
             break;     
 
             case SEND_FIN:
                 printf("Send finish\n");
-                sc_err = writeMessageS_DHSE(handshakeState, finPaket);
-                packHandshakeFin(finPaket,networkMsg);
-                sendOverNetwork(networkMsg);
+                sc_err = writeMessageS_DHSE(handshakeState, &finPaket);
+                packHandshakeFin(&finPaket,&networkMsg);
+                sendOverNetwork(&networkMsg);
                 currentStep = DO_TRANSPORT;
             break;            
              
@@ -183,8 +187,8 @@ void* runnerTask(void* arg){
                 //sendOverNetwork
             break;    
 
-            case ERROR:
-                printf("Error\n");
+            case ERROR: 
+                printf("Error in Handshake - abort\n");
                 run = false;
             break;        
 
