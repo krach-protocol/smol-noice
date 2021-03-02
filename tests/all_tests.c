@@ -53,9 +53,9 @@ void test_unpackHandshakeResponse(void){
                                   0x74 ,0x4A ,0xFD ,0x69 ,0xEC ,0x95 ,0x9E ,0x29};
 
   testMsg.msgBuf = (uint8_t*)malloc((size_t)totalLen+2);
-  testMsg.msgLen = totalLen;
-  testMsg.msgBuf[0] = (messageLen&0xFF00 )>>8;
-  testMsg.msgBuf[1] = messageLen&0xFF;
+  testMsg.msgLen = totalLen+2;
+  testMsg.msgBuf[0] = totalLen&0xFF;
+  testMsg.msgBuf[1] = (totalLen&0xFF00 )>>8;
   testMsg.msgBuf[2] = RESPONSE_PACKET_VERSION;
   testMsg.msgBuf[3] = RESPONSE_PACKET_TYPE;
   memcpy((uint8_t*)&(testMsg.msgBuf[4]),dummyPubkey,32);
@@ -71,7 +71,7 @@ void test_unpackHandshakeResponse(void){
   TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&dummyPubkey,testPacket.ephemeralPubKey,32,"Failed to parse ephemeral public key");
 
   TEST_ASSERT_EQUAL_MESSAGE(payloadLen,testPacket.encryptedPayloadLen,"Wrong payload length // Failed to parse payload length");
-  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&(testMsg.msgBuf[5]),testPacket.encryptedPayload,payloadLen,"Failed to parse payload");
+  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&(testMsg.msgBuf[36]),testPacket.encryptedPayload,payloadLen,"Failed to parse payload");
 }
 
 
