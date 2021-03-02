@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <sodium.h>
 #include "handshake.h"
@@ -21,15 +22,57 @@ void test_unpackHandshakeResponse(void);
 
 sc_error_t loadSmolCert(const char*,smolcert_t**);
 
-#define DUMMY_PUBKEY  0x66 ,0x82 ,0x79 ,0x97 ,0x37 ,0xB7 ,0x6C ,0x17 , \
+#define DUMMY_PUBKEY 0x66 ,0x82 ,0x79 ,0x97 ,0x37 ,0xB7 ,0x6C ,0x17 , \
                       0xC3 ,0x5B ,0x95 ,0x57 ,0x44 ,0x9A ,0x86 ,0x22 , \
                       0xA7 ,0xB8 ,0xA5 ,0x65 ,0x5C ,0xB3 ,0x85 ,0x1C , \
                       0x74 ,0x4A ,0xFD ,0x69 ,0xEC ,0x95 ,0x9E ,0x29 
-        
+#define DUMMY_PUBKEY_ARRAY {DUMMY_PUBKEY}
+
 #define INIT_PACKET_VERSION 0x01
 #define INIT_PACKET_TYPE HANDSHAKE_INIT
 #define INIT_PACKET_LEN 0x00, 0x22
 
+#define RESPONSE_PACKET_VERSION 0x01
+#define RESPONSE_PACKET_TYPE HANDSHAKE_RESPONSE
+
+void test_unpackHandshakeResponse(void){
+  sn_msg_t testMsg = {0};
+  sc_handshakeResponsePacket testPacket = {0};
+  sc_err_t err = Sc_No_Error;
+  time_t t;
+
+  srand((unsigned) time(&t));
+
+  //Craft test message
+  uint16_t messageLen = 34; //length of packetLen not included 
+  uint16_t payloadLen = (16-messageLen%16); //Filling up the payload to divisible by 16 len, for testing
+  uint16_t totalLen = messageLen + payloadLen; 
+  const uint8_t dummyPubkey[] = { 0x66 ,0x82 ,0x79 ,0x97 ,0x37 ,0xB7 ,0x6C ,0x17 , \
+                                  0xC3 ,0x5B ,0x95 ,0x57 ,0x44 ,0x9A ,0x86 ,0x22 , \
+                                  0xA7 ,0xB8 ,0xA5 ,0x65 ,0x5C ,0xB3 ,0x85 ,0x1C , \
+                                  0x74 ,0x4A ,0xFD ,0x69 ,0xEC ,0x95 ,0x9E ,0x29};
+
+  testMsg.msgBuf = (uint8_t*)malloc((size_t)totalLen+2);
+  testMsg.msgLen = totalLen;
+  testMsg.msgBuf[0] = (messageLen&0xFF00 )>>8;
+  testMsg.msgBuf[1] = messageLen&0xFF;
+  testMsg.msgBuf[2] = RESPONSE_PACKET_VERSION;
+  testMsg.msgBuf[3] = RESPONSE_PACKET_TYPE;
+  memcpy((uint8_t*)&(testMsg.msgBuf[4]),dummyPubkey,32);
+
+  for(uint8_t rIdx = 0; rIdx < payloadLen; rIdx++){
+    testMsg.msgBuf[36+rIdx] = (uint8_t)rand();
+  }
+
+  err = unpackHandshakeResponse(&testPacket, &testMsg);
+  TEST_ASSERT_EQUAL_MESSAGE(Sc_No_Error,err,"Failed to unpack message");
+
+  TEST_ASSERT_EQUAL_MESSAGE(RESPONSE_PACKET_TYPE,testPacket.HandshakeType, "Failed to parse messagetype");
+  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&dummyPubkey,testPacket.ephemeralPubKey,32,"Failed to parse ephemeral public key");
+
+  TEST_ASSERT_EQUAL_MESSAGE(payloadLen,testPacket.encryptedPayloadLen,"Wrong payload length // Failed to parse payload length");
+  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&(testMsg.msgBuf[5]),testPacket.encryptedPayload,payloadLen,"Failed to parse payload");
+}
 
 
 void test_packHandshakeInit(void){
@@ -49,14 +92,14 @@ void test_packHandshakeInit(void){
 
   
   //Test for correct test-vector padding
-  TEST_ASSERT_EQUAL_MESSAGE(PACKET_VERSION,handshakeTestVektor[2],"Packetversion-index in testpacket wrong");
-  TEST_ASSERT_EQUAL_MESSAGE(PACKET_TYPE,handshakeTestVektor[3],"Packettype-index in testpacket wrong");
+  TEST_ASSERT_EQUAL_MESSAGE(INIT_PACKET_VERSION,handshakeTestVektor[2],"Packetversion-index in testpacket wrong");
+  TEST_ASSERT_EQUAL_MESSAGE(INIT_PACKET_TYPE,handshakeTestVektor[3],"Packettype-index in testpacket wrong");
 
   //And copy public key to test-vector
   memcpy(&(handshakeTestVektor[4]),testCert->public_key,32);
 
   //Build testpacket
-  testPacket.HandshakeType = PACKET_TYPE;
+  testPacket.HandshakeType = INIT_PACKET_TYPE;
   testPacket.ephemeralPubKey = (uint8_t*)malloc(32);
   memcpy(testPacket.ephemeralPubKey,testCert->public_key,32); 
 
@@ -101,6 +144,7 @@ int main(void) {
     UNITY_BEGIN();
     
     RUN_TEST(test_packHandshakeInit);
+    RUN_TEST(test_unpackHandshakeResponse);
     //RUN_TEST(test_makeNoiseHandshake);
 
     return UNITY_END();
