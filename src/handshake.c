@@ -142,7 +142,7 @@ void* runnerTask(void* arg){
             case INIT_NETWORK:
                 printf("Init Network\n");
                 if(openSocket(taskData->addr, taskData->port) == 0){
-                    printf("init ok\n");
+                    printf("Init ok\n");
                     currentStep = SEND_INIT;
                 }else{
                     printf("error initialing socket\n");
