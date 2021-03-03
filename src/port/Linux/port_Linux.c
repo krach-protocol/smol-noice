@@ -71,18 +71,21 @@ uint8_t openSocket(char* addr,uint16_t port){
 void sendOverNetwork(sn_msg_t* msg){
     size_t sentBytes = 0;
     sentBytes = send(sock , msg->msgBuf , msg->msgLen , 0 ); 
+    printf("Got message with length: %d\n",*((uint16_t*)msg->msgBuf));
     printf("Sent %ld of %d bytes\n",sentBytes,msg->msgLen);
 }
 
 uint8_t messageFromNetwork(sn_msg_t* msg){
     void* data = NULL;
+    uint8_t ret = 0;
     if(messageInQueue(rxQueue)){
         getMessageFromQueue(rxQueue,data); //TODO: Error handling
         memcpy((void*)msg,data,rxQueue->dataSize);
         free(data);
+        ret = 1;
     }
 
-    return 0;
+    return ret;
 }
 
  void sleep_ms(uint16_t waitms){
