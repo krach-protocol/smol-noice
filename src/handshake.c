@@ -111,7 +111,7 @@ sc_err_t writeMessageE(NoiseHandshakeState *handshakeState,sc_handshakeInitPacke
     dhState = noise_handshakestate_get_local_keypair_dh(handshakeState);
     pubKeyLen = noise_dhstate_get_public_key_length(dhState);
     pubKey = (uint8_t*)malloc(pubKeyLen);
-    printf("PubKeylen: %ld",pubKeyLen);
+    printf("PubKeylen: %ld\n",pubKeyLen);
     if(noise_dhstate_get_public_key(dhState,pubKey,pubKeyLen) != NOISE_ERROR_NONE) return SC_ERR;
     
     packet->ephemeralPubKey = (uint8_t*)malloc(pubKeyLen);

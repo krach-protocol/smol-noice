@@ -3,13 +3,13 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include "sn_msg.h"
 
 typedef struct{
     uint8_t queueLen;
     uint8_t queueIdx;
     uint8_t mutex;
-    size_t dataSize;
-    uint8_t** data;
+    sn_msg_t** data;
 } queue_t;
 
 typedef enum{EMPTY,DATA_AVAILIBLE,FULL, OK} queue_err_e;
@@ -17,6 +17,6 @@ typedef enum{EMPTY,DATA_AVAILIBLE,FULL, OK} queue_err_e;
 queue_t* initQueue(uint8_t);
 
 queue_err_e messageInQueue(queue_t*);
-queue_err_e getMessageFromQueue(queue_t*,uint8_t*);
-queue_err_e addToQueue(queue_t*,uint8_t*);
+queue_err_e getMessageFromQueue(queue_t*,sn_msg_t*);
+queue_err_e addToQueue(queue_t*,sn_msg_t*);
 #endif

@@ -33,19 +33,19 @@
 sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg){
     uint16_t packetLen;
     uint8_t version = SC_VERSION;
-
+    uint8_t* writePtr;
     if(packet->HandshakeType != HANDSHAKE_INIT) return SC_PAKET_ERR;
 
     packetLen  = SC_VERSION_LEN + SC_TYPE_LEN + SC_EPHEMERAL_PUB_KEY_LEN;
     
     msg->msgLen = (size_t)packetLen + SC_PACKET_LEN_LEN;
     msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
-    uint8_t* writePtr = msg->msgBuf;
+    writePtr = msg->msgBuf;
 
     //Write packet length to buffer and pay due to endianess
-    *writePtr = (packetLen&0xFF00)>>8;
-    writePtr++;
     *writePtr = (packetLen&0xFF);
+    writePtr++;
+    *writePtr = (packetLen&0xFF00)>>8;
     writePtr++;
 
     memcpy(writePtr,&version, SC_VERSION_LEN);
@@ -95,6 +95,7 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
 sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
     uint16_t packetLen;
     uint8_t version = SC_VERSION;
+    uint8_t* writePtr;
 
     if(packet->HandshakeType != HANDSHAKE_FIN) return SC_PAKET_ERR;
     
@@ -102,17 +103,21 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
     
     msg->msgLen = (size_t)packetLen;
     msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
+    writePtr = msg->msgBuf;
 
-    memcpy(msg->msgBuf,&packetLen, SC_PACKET_LEN_LEN);
-    msg->msgBuf += SC_PACKET_LEN_LEN;
+    //Write packet length to buffer and pay due to endianess
+    *writePtr = (packetLen&0xFF00)>>8;
+    writePtr++;
+    *writePtr = (packetLen&0xFF);
+    writePtr++;
 
-    memcpy(msg->msgBuf,&version, SC_VERSION_LEN);
-    msg->msgBuf += SC_VERSION_LEN;
+    memcpy(writePtr,&version, SC_VERSION_LEN);
+    writePtr += SC_VERSION_LEN;
 
-    memcpy(msg->msgBuf,&(packet->HandshakeType),SC_TYPE_LEN);
-    msg->msgBuf += SC_TYPE_LEN;
+    memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
+    writePtr += SC_TYPE_LEN;
 
-    memcpy(msg->msgBuf,&(packet->encryptedPayload),packet->encryptedPayloadLen);
+    memcpy(writePtr,packet->encryptedPayload,packet->encryptedPayloadLen);
     
     return SC_OK;
 

@@ -76,11 +76,11 @@ void sendOverNetwork(sn_msg_t* msg){
 }
 
 uint8_t messageFromNetwork(sn_msg_t* msg){
-    void* data = NULL;
+    sn_msg_t* data = NULL;
     uint8_t ret = 0;
     if(messageInQueue(rxQueue)){
         getMessageFromQueue(rxQueue,data); //TODO: Error handling
-        memcpy((void*)msg,data,rxQueue->dataSize);
+        memcpy((void*)msg,data,sizeof(sn_msg_t*));
         free(data);
         ret = 1;
     }
