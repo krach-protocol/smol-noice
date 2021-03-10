@@ -99,16 +99,17 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
 
     if(packet->HandshakeType != HANDSHAKE_FIN) return SC_PAKET_ERR;
     
-    packetLen = SC_PACKET_LEN_LEN + SC_VERSION_LEN + SC_TYPE_LEN + packet->encryptedPayloadLen;
+    packetLen = SC_VERSION_LEN + SC_TYPE_LEN + packet->encryptedPayloadLen;
     
-    msg->msgLen = (size_t)packetLen;
+    msg->msgLen = (size_t)packetLen + SC_PACKET_LEN_LEN;
     msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
     writePtr = msg->msgBuf;
 
     //Write packet length to buffer and pay due to endianess
-    *writePtr = (packetLen&0xFF00)>>8;
-    writePtr++;
     *writePtr = (packetLen&0xFF);
+    writePtr++;
+    *writePtr = (packetLen&0xFF00)>>8;
+
     writePtr++;
 
     memcpy(writePtr,&version, SC_VERSION_LEN);
