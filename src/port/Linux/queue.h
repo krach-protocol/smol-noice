@@ -17,6 +17,6 @@ typedef enum{EMPTY,DATA_AVAILIBLE,FULL, OK} queue_err_e;
 queue_t* initQueue(uint8_t);
 
 queue_err_e messageInQueue(queue_t*);
-queue_err_e getMessageFromQueue(queue_t*,sn_msg_t*);
+queue_err_e getMessageFromQueue(queue_t*,sn_msg_t**);
 queue_err_e addToQueue(queue_t*,sn_msg_t*);
 #endif

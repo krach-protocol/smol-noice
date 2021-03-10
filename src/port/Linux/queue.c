@@ -1,11 +1,12 @@
 #include "queue.h"
 #include "sn_msg.h"
 
+#include <stdio.h>
+
 queue_err_e messageInQueue(queue_t* queue){
     queue_err_e err = EMPTY;
-    if(queue->queueIdx == queue->queueLen-1){
-        err =  FULL;
-    }else if(queue->queueIdx > 0){
+     if(queue->queueIdx > 0){
+        printf("DATA AVAILIBLE");
         err =  DATA_AVAILIBLE;
     }else{
         err =  EMPTY;
@@ -13,22 +14,25 @@ queue_err_e messageInQueue(queue_t* queue){
     return err;
 }
 
-queue_err_e getMessageFromQueue(queue_t* queue, sn_msg_t* data){
+queue_err_e getMessageFromQueue(queue_t* queue, sn_msg_t** data){
     queue_err_e err = OK;
     if(queue->queueIdx == 0){
         err = EMPTY;
     } else {
-        data = queue->data[queue->queueIdx--];
+        *data = queue->data[--queue->queueIdx];
         err = OK;
     }
     return err;
 }
 queue_err_e addToQueue(queue_t* queue, sn_msg_t* data){
     queue_err_e err = OK;
+    
     if(queue->queueIdx >= queue->queueLen){
         err = FULL; 
     }else{
-        queue->data[queue->queueIdx++] = data;
+        queue->data[queue->queueIdx] = data;
+        queue->queueIdx++;
+        printf("new Element in queue\n");
         err = OK;
     }
     return err;
