@@ -19,6 +19,7 @@
 void test_makeNoiseHandshake(void);
 void test_packHandshakeInit(void);
 void test_unpackHandshakeResponse(void);
+void test_packHandshakeFin(void);
 
 sc_error_t loadSmolCert(const char*,smolcert_t**);
 
@@ -30,10 +31,44 @@ sc_error_t loadSmolCert(const char*,smolcert_t**);
 
 #define INIT_PACKET_VERSION 0x01
 #define INIT_PACKET_TYPE HANDSHAKE_INIT
-#define INIT_PACKET_LEN 0x00, 0x22
+#define INIT_PACKET_LEN 0x22, 0x00
+
+#define FIN_PACKET_VERSION 0x01
+#define FIN_PACKET_TYPE HANDSHAKE_FIN
+#define FIN_PACKET_LEN 0x00, 0x22
 
 #define RESPONSE_PACKET_VERSION 0x01
 #define RESPONSE_PACKET_TYPE HANDSHAKE_RESPONSE
+
+void test_packHandshakeFin(void){
+  uint8_t handshakeTestVektor[] = {INIT_PACKET_LEN,FIN_PACKET_VERSION,FIN_PACKET_TYPE,DUMMY_PUBKEY};
+  smolcert_t *testCert;
+  sc_err_t err;
+  sn_msg_t testMsg;
+  sc_handshakeFinPacket testPacket;
+    
+  //Test for correct test-vector padding
+  TEST_ASSERT_EQUAL_MESSAGE(FIN_PACKET_VERSION,handshakeTestVektor[2],"Packetversion-index in testpacket wrong");
+  TEST_ASSERT_EQUAL_MESSAGE(FIN_PACKET_TYPE,handshakeTestVektor[3],"Packettype-index in testpacket wrong");
+
+  //And copy public key to test-vector
+  //memcpy(&(handshakeTestVektor[4]),testCert->public_key,32);
+
+  //Build testpacket
+  testPacket.HandshakeType = FIN_PACKET_TYPE;
+  //testPacket.ephemeralPubKey = (uint8_t*)malloc(32);
+  //memcpy(testPacket.ephemeralPubKey,testCert->public_key,32); 
+
+    //pack the packet
+  err = packHandshakeFin(&testPacket,&testMsg);
+  TEST_ASSERT_EQUAL(err , Sc_No_Error);
+
+  //aaaannnndd?
+  TEST_ASSERT_EQUAL_MESSAGE(36,testMsg.msgLen,"Test packet length doesnt match");
+  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(handshakeTestVektor, testMsg.msgBuf,36,"Failed to pack handshake message");
+
+
+}
 
 void test_unpackHandshakeResponse(void){
   sn_msg_t testMsg = {0};
@@ -135,6 +170,9 @@ void test_makeNoiseHandshake(void){
   }else{
     printf("Error initialzing cert");
   }
+
+  while(1);
+    printf("End");
 }
 
 int main(void) {
@@ -145,10 +183,11 @@ int main(void) {
     
     RUN_TEST(test_packHandshakeInit);
     RUN_TEST(test_unpackHandshakeResponse);
-    //RUN_TEST(test_makeNoiseHandshake);
+    //RUN_TEST(test_packHandshakeFin);
+    RUN_TEST(test_makeNoiseHandshake);
 
     return UNITY_END();
-    //while(1);
+    
     return 0;
 }
 
