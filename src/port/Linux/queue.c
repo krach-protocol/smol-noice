@@ -1,4 +1,4 @@
-#include "queue.h"
+#include "../queue.h"
 #include "sn_msg.h"
 
 #include <stdio.h>
