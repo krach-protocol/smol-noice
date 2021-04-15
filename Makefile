@@ -39,7 +39,7 @@ CFLAGS += -Wpointer-arith
 CFLAGS += -Wcast-align
 CFLAGS += -Wwrite-strings
 #CFLAGS += -Wswitch-default
-CFLAGS += -Wunreachable-code
+#CFLAGS += -Wunreachable-code
 CFLAGS += -Winit-self
 CFLAGS += -Wmissing-field-initializers
 CFLAGS += -Wno-unknown-pragmas
@@ -49,7 +49,10 @@ CFLAGS += -Wold-style-definition
 CFLAGS += -Wmissing-prototypes
 CFLAGS += -Wmissing-declarations
 CFLAGS += -DUNITY_FIXTURES
-#CFLAGS += -Wno-unused-parameter
+CFLAGS += -Wno-unused-parameter
+CFLAGS += -Wno-enum-conversion
+CFLAGS += -Wno-empty-body
+CFLAGS += -Wno-cast-align
 
 #####################################################
 # PATHS
@@ -95,7 +98,8 @@ SOURCE_TEST = $(wildcard $(PATH_TEST_SRC)*.c)
 SOURCE_TEST_RUNNERS = $(wildcard $(PATH_TEST_RUNNERS)*.c)
 SOURCE_APP = $(foreach src_dir, $(PATH_APP_SRC), $(wildcard $(src_dir)/*.c)) #$(wildcard $(scr_dir)/*.c)
 APP_INC_DIRS = $(foreach inc_dir, $(PATH_APP_INC), -I$(inc_dir))
-LIBRARY_FLAGS = -L$(PATH_NOISE_ROOT)build/lib/ $(foreach lib, $(APP_LIBRARIES), -l$(lib))
+LIBRARY_FLAGS = $(foreach lib, $(LIBRARY_PATHS), -L$(lib))
+LIBRARY_FLAGS += -L$(PATH_NOISE_ROOT)build/lib/ $(foreach lib, $(APP_LIBRARIES), -l$(lib))
 
 #####################################################
 # RESULTS 
@@ -111,7 +115,8 @@ SRC_FILES1=\
   $(SOURCE_TEST) \
   $(SOURCE_TEST_RUNNERS)
 
-INC_DIRS= -I$(PATH_UNITY_ROOT)src \
+INC_DIRS = $(foreach inc_dir, $(INCLUDE_DIRS), -I$(inc_dir))
+INC_DIRS += -I$(PATH_UNITY_ROOT)src \
 	-I$(PATH_UNITY_ROOT)extras/fixture/src \
 	-I$(PATH_UNITY_ROOT)extras/memory/src \
 	$(APP_INC_DIRS)
@@ -160,7 +165,7 @@ clean:
 
 noise-config:
 	$(MKDIR) $(PATH_NOISE_ROOT)build
-	cd $(PATH_NOISE_ROOT) && autoreconf -i && ./configure --prefix=$(CURDIR)/$(PATH_NOISE_ROOT)build --with-libsodium CC=$(CC)
+	cd $(PATH_NOISE_ROOT) && autoreconf -i && PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) ./configure --prefix=$(CURDIR)/$(PATH_NOISE_ROOT)build --without-libsodium --without-openssl CC=$(CC)
 noise-install: noise-config
 	cd $(PATH_NOISE_ROOT) && make install
 noise-clean:
