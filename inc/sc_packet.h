@@ -7,7 +7,7 @@
 #include "sc_err.h"
 #include "sn_msg.h"
 
-typedef enum{HANDSHAKE_INIT=0x01,HANDSHAKE_RESPONSE=0x02,HANDSHAKE_FIN,TRANSPORT} sc_packet_type_e;
+typedef enum{HANDSHAKE_INIT=0x01,HANDSHAKE_RESPONSE=0x02,HANDSHAKE_FIN=0x03,TRANSPORT=0x10} sc_packet_type_e;
 
 //HandshakeInit Client -> Server
 typedef struct{ 
