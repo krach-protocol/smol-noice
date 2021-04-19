@@ -152,6 +152,7 @@ void* runnerTask(void* arg){
             case SEND_INIT:
                 printf("Send Init\n");
                 sc_err = writeMessageE(handshakeState,&initPaket);
+                initPaket.HandshakeType = HANDSHAKE_INIT;
                 packHandshakeInit(&initPaket,&networkMsg);
                 sendOverNetwork(&networkMsg);
                 currentStep = WAIT_FOR_RES;

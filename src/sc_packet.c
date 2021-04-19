@@ -36,24 +36,21 @@ sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg){
     uint8_t* writePtr;
     if(packet->HandshakeType != HANDSHAKE_INIT) return SC_PAKET_ERR;
 
-    packetLen  = SC_VERSION_LEN + SC_TYPE_LEN + SC_EPHEMERAL_PUB_KEY_LEN;
+    packetLen  =  SC_EPHEMERAL_PUB_KEY_LEN; // We put version and type at the beginning and only count the bytes following that
     
-    msg->msgLen = (size_t)packetLen + SC_PACKET_LEN_LEN;
+    msg->msgLen = (size_t)packetLen + SC_PACKET_LEN_LEN + SC_VERSION_LEN + SC_TYPE_LEN;
     msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
     writePtr = msg->msgBuf;
 
+    memcpy(writePtr,&version, SC_VERSION_LEN);
+    writePtr++;
+    memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
+    writePtr += SC_TYPE_LEN;
     //Write packet length to buffer and pay due to endianess
     *writePtr = (packetLen&0xFF);
     writePtr++;
     *writePtr = (packetLen&0xFF00)>>8;
     writePtr++;
-
-    memcpy(writePtr,&version, SC_VERSION_LEN);
-    writePtr += SC_VERSION_LEN;
-
-
-    memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
-    writePtr += SC_TYPE_LEN;
 
     memcpy(writePtr,packet->ephemeralPubKey,SC_EPHEMERAL_PUB_KEY_LEN);
     
