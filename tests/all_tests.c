@@ -105,8 +105,8 @@ void test_unpackHandshakeResponse(void){
   TEST_ASSERT_EQUAL_MESSAGE(RESPONSE_PACKET_TYPE,testPacket.HandshakeType, "Failed to parse messagetype");
   TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&dummyPubkey,testPacket.ephemeralPubKey,32,"Failed to parse ephemeral public key");
 
-  TEST_ASSERT_EQUAL_MESSAGE(payloadLen,testPacket.encryptedPayloadLen,"Wrong payload length // Failed to parse payload length");
-  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&(testMsg.msgBuf[36]),testPacket.encryptedPayload,payloadLen,"Failed to parse payload");
+  TEST_ASSERT_EQUAL_MESSAGE(payloadLen,testPacket.payloadLen,"Wrong payload length // Failed to parse payload length");
+  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&(testMsg.msgBuf[36]),testPacket.payload,payloadLen,"Failed to parse payload");
 }
 
 

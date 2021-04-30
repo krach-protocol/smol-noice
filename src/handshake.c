@@ -170,6 +170,7 @@ void* runnerTask(void* arg){
             case SEND_FIN:
                 printf("Send finish\n");
                 sc_err = writeMessageS_DHSE(handshakeState, &finPaket);
+                finPaket.HandshakeType = HANDSHAKE_FIN;
                 packHandshakeFin(&finPaket,&networkMsg);
                 sendOverNetwork(&networkMsg);
                 currentStep = DO_TRANSPORT;
@@ -288,7 +289,7 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
    NoiseSymmetricState *symmState = handshakeState->symmetric;
    NoiseBuffer idBuffer;
    noise_buffer_init(idBuffer);
-   noise_buffer_set_input(idBuffer, packet->encryptedPayload,packet->encryptedPayloadLen);
+   noise_buffer_set_input(idBuffer, packet->payload,packet->payloadLen);
    noise_symmetricstate_decrypt_and_hash(symmState,&idBuffer);
    
    //now idBuffer should contain a the server smolcert - go and validate

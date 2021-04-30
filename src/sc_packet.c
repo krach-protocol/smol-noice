@@ -18,6 +18,31 @@
 
 #define SC_VERSION                 0x01
 
+uint16_t readUint16(uint8_t* buf) {
+    uint16_t result = 0;
+    result += buf[0] | (buf[1] << 8);
+    return result;
+}
+
+// Reads a single length value block from buf. Buf must start with a LV-block
+sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t* dst, uint16_t *dstlen) {
+    if(bufLen < 2) {
+        return SC_ERR;
+    }
+    *dstlen = readUint16(buf);
+    if(bufLen < (*dstlen+2)) {
+        // Provided buffer is too small to contain a valid LV block
+        return SC_ERR;
+    }
+    dst = (uint8_t*)malloc(*dstlen); 
+    if(dst == NULL) {
+        // Allocation failed
+        return SC_ERR;
+    }
+    memcpy(dst, buf+2, *dstlen);
+
+    return SC_OK;
+}
 
 /** Little sidenote:
  * See unpacking and packing discussion here:
@@ -62,30 +87,43 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     uint8_t version = 0;
     uint16_t packetLen = 0;
     uint8_t* readPtr = msg->msgBuf;
-    memcpy(&(packetLen), readPtr,SC_PACKET_LEN_LEN);
-    if((readBytes + SC_PACKET_LEN_LEN) > SC_MAX_PACKET_LEN) return SC_PAKET_ERR;
-    readPtr += SC_PACKET_LEN_LEN;
-    
-    memcpy(&version,readPtr,SC_VERSION_LEN);
-    if((readBytes += SC_VERSION_LEN) > packetLen) return SC_PAKET_ERR;
-    readPtr += SC_VERSION_LEN;
-    if(version > SC_VERSION) return SC_PAKET_ERR;
-
-    memcpy((uint8_t*)&(packet->HandshakeType),readPtr,SC_TYPE_LEN);
-    if((readBytes += SC_TYPE_LEN) > packetLen) return SC_PAKET_ERR;
+    memcpy((uint8_t*)&(packet->HandshakeType), readPtr,SC_TYPE_LEN);
+    if (packet->HandshakeType != HANDSHAKE_RESPONSE) {
+        return SC_PAKET_ERR;
+    }
     readPtr += SC_TYPE_LEN;
-    if(packet->HandshakeType != HANDSHAKE_RESPONSE) return SC_PAKET_ERR;
+    readBytes += SC_TYPE_LEN;
+
+    if((readBytes + SC_PACKET_LEN_LEN + SC_TYPE_LEN) > SC_MAX_PACKET_LEN) return SC_PAKET_ERR;
+    packetLen = readUint16(readPtr);
+    readPtr += SC_PACKET_LEN_LEN;
+    readBytes += SC_PACKET_LEN_LEN;
+    if(readBytes >= (packetLen+SC_TYPE_LEN + SC_PACKET_LEN_LEN)) {
+        return SC_PAKET_ERR;
+    }
+
+    sc_err_t err = SC_OK;
 
     packet->ephemeralPubKey = (uint8_t*)malloc(SC_EPHEMERAL_PUB_KEY_LEN);
     memcpy((uint8_t*)(packet->ephemeralPubKey),readPtr,SC_EPHEMERAL_PUB_KEY_LEN);
-    if((readBytes += SC_EPHEMERAL_PUB_KEY_LEN) > packetLen) return SC_PAKET_ERR;
     readPtr += SC_EPHEMERAL_PUB_KEY_LEN;
+    readBytes += SC_EPHEMERAL_PUB_KEY_LEN;
 
-    packet->encryptedPayloadLen = packetLen - readBytes;
-    packet->encryptedPayload = (uint8_t*)malloc(packet->encryptedPayloadLen);
-    memcpy((uint8_t*)(packet->encryptedPayload),readPtr,packet->encryptedPayloadLen);
+    err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), packet->smolcert, &packet->smolcertLen);
+    if(err != SC_OK) {
+        return err;
+    }
+    readPtr += (packet->smolcertLen+2);
+    readBytes += (packet->smolcertLen+2);
+
+    err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), packet->payload, &packet->payloadLen);
+    if(err != SC_OK) {
+        return err;
+    }
+    readPtr += (packet->payloadLen+2);
+    readBytes += (packet->payloadLen+2);
     
-    return SC_OK;
+    return err;
 }
 
 
