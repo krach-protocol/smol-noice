@@ -145,7 +145,7 @@ $(PATH_BUILD_DEPENDS):
 
 $(RESULTS_TEST):
 	$(COMPILE) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) -g $(SRC_FILES1) $(LIBRARY_FLAGS) -o $(TARGET1)
-	./$(TARGET1) -v > $@ 2>&1
+	./$(TARGET1) -v   # > $@ 2>&1
 
 .PHONEY:print
 print:
