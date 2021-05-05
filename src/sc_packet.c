@@ -25,7 +25,7 @@ uint16_t readUint16(uint8_t* buf) {
 }
 
 // Reads a single length value block from buf. Buf must start with a LV-block
-sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t* dst, uint16_t *dstlen) {
+sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t** dst, uint16_t *dstlen) {
     if(bufLen < 2) {
         return SC_ERR;
     }
@@ -34,12 +34,18 @@ sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t* dst, uint16_t *dstl
         // Provided buffer is too small to contain a valid LV block
         return SC_ERR;
     }
-    dst = (uint8_t*)malloc(*dstlen); 
+    
+    if(*dstlen+2 > bufLen) {
+        return SC_ERR;
+    }
+
+    /*dst = (uint8_t*)malloc(*dstlen);
     if(dst == NULL) {
         // Allocation failed
         return SC_ERR;
     }
-    memcpy(dst, buf+2, *dstlen);
+    memcpy(dst, buf+2, *dstlen);*/
+    *dst = buf+2;
 
     return SC_OK;
 }
@@ -109,14 +115,14 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     readPtr += SC_EPHEMERAL_PUB_KEY_LEN;
     readBytes += SC_EPHEMERAL_PUB_KEY_LEN;
 
-    err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), packet->smolcert, &packet->smolcertLen);
+    err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), &packet->smolcert, &packet->smolcertLen);
     if(err != SC_OK) {
         return err;
     }
     readPtr += (packet->smolcertLen+2);
     readBytes += (packet->smolcertLen+2);
 
-    err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), packet->payload, &packet->payloadLen);
+    err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), &packet->payload, &packet->payloadLen);
     if(err != SC_OK) {
         return err;
     }

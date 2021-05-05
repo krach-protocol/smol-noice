@@ -124,7 +124,7 @@ uint16_t readUint16(uint8_t* buf);
  * dstlen:          Length of the allocated destination byte array
  * return sc_err_t, SC_ERR if something went wrong otherwise SC_OK
  * */
-sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t* dst, uint16_t *dstlen);
+sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t** dst, uint16_t *dstlen);
 
 
 
