@@ -33,7 +33,7 @@ sc_error_t loadSmolCert(const char*,smolcert_t**);
 
 #define INIT_PACKET_VERSION 0x01
 #define INIT_PACKET_TYPE HANDSHAKE_INIT
-#define INIT_PACKET_LEN 0x22, 0x00
+#define INIT_PACKET_LEN 0x20, 0x00
 
 #define FIN_PACKET_VERSION 0x01
 #define FIN_PACKET_TYPE HANDSHAKE_FIN
@@ -131,7 +131,7 @@ void test_unpackHandshakeResponse(void){
 
 
 void test_packHandshakeInit(void){
-  uint8_t handshakeTestVektor[] = {INIT_PACKET_LEN,INIT_PACKET_VERSION,INIT_PACKET_TYPE,DUMMY_PUBKEY};
+  uint8_t handshakeTestVektor[] = {INIT_PACKET_VERSION, INIT_PACKET_TYPE, INIT_PACKET_LEN,DUMMY_PUBKEY};
   smolcert_t *testCert;
   sc_err_t err;
   sn_msg_t testMsg;
@@ -147,8 +147,8 @@ void test_packHandshakeInit(void){
 
   
   //Test for correct test-vector padding
-  TEST_ASSERT_EQUAL_MESSAGE(INIT_PACKET_VERSION,handshakeTestVektor[2],"Packetversion-index in testpacket wrong");
-  TEST_ASSERT_EQUAL_MESSAGE(INIT_PACKET_TYPE,handshakeTestVektor[3],"Packettype-index in testpacket wrong");
+  TEST_ASSERT_EQUAL_MESSAGE(INIT_PACKET_VERSION,handshakeTestVektor[0],"Packetversion-index in testpacket wrong");
+  TEST_ASSERT_EQUAL_MESSAGE(INIT_PACKET_TYPE,handshakeTestVektor[1],"Packettype-index in testpacket wrong");
 
   //And copy public key to test-vector
   memcpy(&(handshakeTestVektor[4]),testCert->public_key,32);
