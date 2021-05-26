@@ -22,6 +22,7 @@ void test_unpackHandshakeResponse(void);
 void test_packHandshakeFin(void);
 void test_readWriteUint16(void);
 void test_readLVBlock(void);
+void test_writeLVBlock(void);
 
 sc_error_t loadSmolCert(const char*,smolcert_t**);
 
@@ -61,6 +62,19 @@ void test_readLVBlock(void) {
   TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "readLVBlock returned an error");
   TEST_ASSERT_EQUAL_MESSAGE(8, payloadLen, "Failed to read correct payload length");
   TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE((uint8_t*)&lvBlock[2], payload, 8, "Failed to read correct payload from lv block");
+}
+
+void test_writeLVBlock(void) {
+  uint8_t dataBlock[] = {0x01,0x02,0x03};
+  uint8_t buf[5];
+  uint16_t outLen;
+  sc_err_t err = writeLVBlock((uint8_t*)&buf, 5, (uint8_t*)&dataBlock, 3, &outLen);
+  TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "writeLVBlock returned an error");
+  uint16_t readLength = readUint16((uint8_t*)&buf);
+  TEST_ASSERT_EQUAL_MESSAGE(3, readLength, "Found invalid length at beginning of LV Block");
+  TEST_ASSERT_EQUAL_MESSAGE(0x01, buf[2], "Invalid data in LV Block");
+  TEST_ASSERT_EQUAL_MESSAGE(0x02, buf[3], "Invalid data in LV Block");
+  TEST_ASSERT_EQUAL_MESSAGE(0x03, buf[4], "Invalid data in LV Block");
 }
 
 void test_packHandshakeFin(void){
@@ -207,6 +221,7 @@ int main(void) {
     UNITY_BEGIN();
     
     RUN_TEST(test_readWriteUint16);
+    RUN_TEST(test_writeLVBlock);
     RUN_TEST(test_readLVBlock);
     RUN_TEST(test_packHandshakeInit);
     RUN_TEST(test_unpackHandshakeResponse);

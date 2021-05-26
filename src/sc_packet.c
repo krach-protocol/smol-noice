@@ -59,6 +59,10 @@ sc_err_t writeLVBlock(uint8_t *buf, uint16_t bufLen, uint8_t *data, uint16_t dat
     if(bufLen < dataLen + 2) {
         return SC_ERR;
     }
+    uint8_t* writePtr = buf;
+    writeUint16(writePtr, dataLen);
+    writePtr += 2; // Increase pointer by length of uint16
+    memcpy(writePtr, data, dataLen);
     return SC_OK;
 }
 
