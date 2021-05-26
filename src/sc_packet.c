@@ -24,6 +24,11 @@ uint16_t readUint16(uint8_t* buf) {
     return result;
 }
 
+void writeUint16(uint8_t* buf, uint16_t val) {
+    buf[0] = (val & 0x00FF);
+    buf[1] = (val & 0xFF00) >> 8;
+}
+
 // Reads a single length value block from buf. Buf must start with a LV-block
 sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t** dst, uint16_t *dstlen) {
     if(bufLen < 2) {
@@ -47,6 +52,13 @@ sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t** dst, uint16_t *dst
     memcpy(dst, buf+2, *dstlen);*/
     *dst = buf+2;
 
+    return SC_OK;
+}
+
+sc_err_t writeLVBlock(uint8_t *buf, uint16_t bufLen, uint8_t *data, uint16_t dataLen, uint16_t *outLen) {
+    if(bufLen < dataLen + 2) {
+        return SC_ERR;
+    }
     return SC_OK;
 }
 

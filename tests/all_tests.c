@@ -20,7 +20,7 @@ void test_makeNoiseHandshake(void);
 void test_packHandshakeInit(void);
 void test_unpackHandshakeResponse(void);
 void test_packHandshakeFin(void);
-void test_readUint16(void);
+void test_readWriteUint16(void);
 void test_readLVBlock(void);
 
 sc_error_t loadSmolCert(const char*,smolcert_t**);
@@ -42,10 +42,15 @@ sc_error_t loadSmolCert(const char*,smolcert_t**);
 #define RESPONSE_PACKET_VERSION 0x01
 #define RESPONSE_PACKET_TYPE HANDSHAKE_RESPONSE
 
-void test_readUint16(void) {
+void test_readWriteUint16(void) {
   uint8_t testInt[] = {0xE9,0x07};
   uint16_t i = readUint16((uint8_t*)&testInt);
   TEST_ASSERT_EQUAL_MESSAGE(2025, i, "Failed to read little endian integer from byte array");
+
+  uint8_t testBuf[2];
+  writeUint16((uint8_t*)&testBuf, 2025);
+  TEST_ASSERT_EQUAL_MESSAGE(0xE9, testBuf[0], "Lower byte of uint16 does not match");
+  TEST_ASSERT_EQUAL_MESSAGE(0x07, testBuf[1], "Upper byte of uint16 does not match");
 }
 
 void test_readLVBlock(void) {
@@ -201,7 +206,7 @@ int main(void) {
     }
     UNITY_BEGIN();
     
-    RUN_TEST(test_readUint16);
+    RUN_TEST(test_readWriteUint16);
     RUN_TEST(test_readLVBlock);
     RUN_TEST(test_packHandshakeInit);
     RUN_TEST(test_unpackHandshakeResponse);

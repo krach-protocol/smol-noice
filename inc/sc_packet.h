@@ -112,6 +112,8 @@ sc_err_t unpackTransport(sc_transportPacket* packet, sn_msg_t *msg);
  * */
 uint16_t readUint16(uint8_t* buf);
 
+void writeUint16(uint8_t* buf, uint16_t val);
+
 /**
  * Function: readLVBlock
  * ---------------------
@@ -125,6 +127,8 @@ uint16_t readUint16(uint8_t* buf);
  * return sc_err_t, SC_ERR if something went wrong otherwise SC_OK
  * */
 sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t** dst, uint16_t *dstlen);
+
+sc_err_t writeLVBlock(uint8_t *buf, uint16_t bufLen, uint8_t *data, uint16_t dataLen, uint16_t *outLen);
 
 
 
