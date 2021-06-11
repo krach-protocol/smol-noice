@@ -77,36 +77,6 @@ void test_writeLVBlock(void) {
   TEST_ASSERT_EQUAL_MESSAGE(0x03, buf[4], "Invalid data in LV Block");
 }
 
-void test_packHandshakeFin(void){
-  uint8_t handshakeTestVektor[] = {INIT_PACKET_LEN,FIN_PACKET_VERSION,FIN_PACKET_TYPE,DUMMY_PUBKEY};
-  smolcert_t *testCert;
-  sc_err_t err;
-  sn_msg_t testMsg;
-  sc_handshakeFinPacket testPacket;
-    
-  //Test for correct test-vector padding
-  TEST_ASSERT_EQUAL_MESSAGE(FIN_PACKET_VERSION,handshakeTestVektor[2],"Packetversion-index in testpacket wrong");
-  TEST_ASSERT_EQUAL_MESSAGE(FIN_PACKET_TYPE,handshakeTestVektor[3],"Packettype-index in testpacket wrong");
-
-  //And copy public key to test-vector
-  //memcpy(&(handshakeTestVektor[4]),testCert->public_key,32);
-
-  //Build testpacket
-  testPacket.HandshakeType = FIN_PACKET_TYPE;
-  //testPacket.ephemeralPubKey = (uint8_t*)malloc(32);
-  //memcpy(testPacket.ephemeralPubKey,testCert->public_key,32); 
-
-    //pack the packet
-  err = packHandshakeFin(&testPacket,&testMsg);
-  TEST_ASSERT_EQUAL(err , Sc_No_Error);
-
-  //aaaannnndd?
-  TEST_ASSERT_EQUAL_MESSAGE(36,testMsg.msgLen,"Test packet length doesnt match");
-  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(handshakeTestVektor, testMsg.msgBuf,36,"Failed to pack handshake message");
-
-
-}
-
 void test_unpackHandshakeResponse(void){
   sn_msg_t testMsg = {0};
   sc_handshakeResponsePacket testPacket = {0};
@@ -191,6 +161,17 @@ void test_packHandshakeInit(void){
 
 }
 
+void test_packHandshakeFin(void) {
+  sc_handshakeFinPacket pkt;
+  pkt.HandshakeType = HANDSHAKE_FIN;
+  uint8_t encryptedPayload[2] = { 0x01, 0x02 };
+  pkt.encryptedPayload = (uint8_t*)&encryptedPayload;
+  pkt.encryptedPayloadLen = 2;
+
+  sn_msg_t msg;
+  sc_err_t err = packHandshakeFin(&pkt, &msg);
+  TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "Packing handshake fin packet failed");
+}
 
 void test_makeNoiseHandshake(void){
   smolcert_t *clientCert = (smolcert_t*)malloc(sizeof(smolcert_t));

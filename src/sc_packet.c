@@ -156,26 +156,23 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
 
     if(packet->HandshakeType != HANDSHAKE_FIN) return SC_PAKET_ERR;
     
-    packetLen = SC_VERSION_LEN + SC_TYPE_LEN + packet->encryptedPayloadLen;
+    packetLen = SC_TYPE_LEN + SC_PACKET_LEN_LEN + SC_PACKET_LEN_LEN /*Length of identity payload */+ packet->encryptedPayloadLen;
     
-    msg->msgLen = (size_t)packetLen + SC_PACKET_LEN_LEN;
+    msg->msgLen = (size_t)packetLen;
     msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
     writePtr = msg->msgBuf;
 
     //Write packet length to buffer and pay due to endianess
-    *writePtr = (packetLen&0xFF);
+    *writePtr = packet->HandshakeType;
     writePtr++;
-    *writePtr = (packetLen&0xFF00)>>8;
+    writeUint16(writePtr, packetLen-3 /*subtract packet type and length field*/);
+    writePtr+=2; /* increase writePtr by length of length field */
 
-    writePtr++;
+    uint16_t lvBlockWritten;
+    writeLVBlock(writePtr, msg->msgLen - 3, packet->encryptedPayload, packet->encryptedPayloadLen, &lvBlockWritten);
+    writePtr += lvBlockWritten;
 
-    memcpy(writePtr,&version, SC_VERSION_LEN);
-    writePtr += SC_VERSION_LEN;
-
-    memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
-    writePtr += SC_TYPE_LEN;
-
-    memcpy(writePtr,packet->encryptedPayload,packet->encryptedPayloadLen);
+    // TODO prepare for additional payload
     
     return SC_OK;
 
