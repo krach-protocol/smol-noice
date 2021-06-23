@@ -210,6 +210,7 @@ sc_err_t writeMessageS(NoiseHandshakeState *handshakeState, sc_handshakeFinPacke
     
         //TODO A lot of sanity checks missing here
         // check if local pub key is availible
+        // and convert ed25519 key in curve25519 and add it to the dh state.
 
 
     // encryptedSPublic = s.symmState.EncryptAndHash(encryptedSPublic, idBytes) <-- is this right?
@@ -293,12 +294,14 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
    noise_symmetricstate_decrypt_and_hash(symmState,&idBuffer);
    
    //now idBuffer should contain a the server smolcert - go and validate
+   // also we need to convert the ed25519 to curve25510, see krach -> smolcert.go:16
+   // Need to add received pub key somehow to dhstate...
    return SC_OK;
 }
 
 sc_err_t readMessageDHES(NoiseHandshakeState *handshakeState, sc_handshakeResponsePacket *packet){
     //s.symmState.MixKey(s.symmState.DH(s.ephemeralDHKey.Private, s.remoteIdentity.PublicKey()));
-    NoiseDHState *remotePKDH = noise_handshakestate_get_remote_public_key_dh(handshakeState);
+    NoiseDHState *remotePKDH = noise_handshakestate_get_remote_public_key_dh(handshakeState); // If we set the remote pubkey correctly in readMessageS, this should work as expected
     NoiseDHState *localFEDH = noise_handshakestate_get_fixed_ephemeral_dh(handshakeState); //TODO: Really?
     NoiseSymmetricState *symmState = handshakeState->symmetric;
     uint8_t* DHresult = NULL;
