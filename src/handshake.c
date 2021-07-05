@@ -149,31 +149,53 @@ void* runnerTask(void* arg){
                     currentStep = ERROR;
                 }
             break;
+
             case SEND_INIT:
                 printf("Send Init\n");
                 sc_err = writeMessageE(handshakeState,&initPaket);
+
                 initPaket.HandshakeType = HANDSHAKE_INIT;
-                packHandshakeInit(&initPaket,&networkMsg);
-                sendOverNetwork(&networkMsg);
-                currentStep = WAIT_FOR_RES;
+                if(sc_err == SC_OK) sc_err = packHandshakeInit(&initPaket,&networkMsg);
+                
+                if(sc_err == SC_OK) sendOverNetwork(&networkMsg);
+
+                if(sc_err != SC_OK){
+                    currentStep = ERROR;
+                }else{
+                    currentStep = WAIT_FOR_RES;
+                }
             break;    
 
             case WAIT_FOR_RES:
                 printf("Wait for response\n");
-                 if(messageFromNetwork(&networkMsg)){
-                    unpackHandshakeResponse(&responsePaket,&networkMsg);
-                    sc_err = readMessageE_DHEE_S_DHES(handshakeState, &responsePaket); 
-                    currentStep = SEND_FIN;
+                if(messageFromNetwork(&networkMsg)){
+                    sc_err = unpackHandshakeResponse(&responsePaket,&networkMsg);
+
+                    if(sc_err == SC_OK) sc_err = readMessageE_DHEE_S_DHES(handshakeState, &responsePaket); 
+                    
+                    if(sc_err != SC_OK){
+                        currentStep = ERROR;
+                    }else{
+                        currentStep = SEND_FIN;
+                    } 
                  }
             break;     
 
             case SEND_FIN:
                 printf("Send finish\n");
                 sc_err = writeMessageS_DHSE(handshakeState, &finPaket);
+
                 finPaket.HandshakeType = HANDSHAKE_FIN;
-                packHandshakeFin(&finPaket,&networkMsg);
-                sendOverNetwork(&networkMsg);
-                currentStep = DO_TRANSPORT;
+                
+                if(sc_err == SC_OK) sc_err = packHandshakeFin(&finPaket,&networkMsg);
+
+                if(sc_err == SC_OK) sendOverNetwork(&networkMsg);
+
+                if(sc_err != SC_OK){
+                    currentStep = ERROR;
+                }else{
+                    currentStep = DO_TRANSPORT;
+                }
             break;            
              
             case DO_TRANSPORT:
