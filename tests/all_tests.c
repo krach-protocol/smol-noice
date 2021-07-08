@@ -23,6 +23,7 @@ void test_packHandshakeFin(void);
 void test_readWriteUint16(void);
 void test_readLVBlock(void);
 void test_writeLVBlock(void);
+void test_NoiseName(void);
 
 sc_error_t loadSmolCert(const char*,smolcert_t**);
 
@@ -42,6 +43,23 @@ sc_error_t loadSmolCert(const char*,smolcert_t**);
 
 #define RESPONSE_PACKET_VERSION 0x01
 #define RESPONSE_PACKET_TYPE HANDSHAKE_RESPONSE
+
+void test_NoiseName(void) {
+  NoiseProtocolId *krach = (NoiseProtocolId*)malloc(sizeof(NoiseProtocolId));
+
+  krach->cipher_id = NOISE_CIPHER_CHACHAPOLY;
+  krach->dh_id = NOISE_DH_CURVE25519;
+  krach->hash_id = NOISE_HASH_BLAKE2s;
+  krach->pattern_id = NOISE_PATTERN_XX;
+  krach->prefix_id = NOISE_PREFIX_KRACH;
+
+  char name[NOISE_MAX_PROTOCOL_NAME];
+
+  int err = noise_protocol_id_to_name(name, sizeof(name), krach);
+  TEST_ASSERT_EQUAL_MESSAGE(NOISE_ERROR_NONE, err, "Formatting of noise protocol name failed");
+  TEST_ASSERT_EQUAL_STRING_MESSAGE("Krach_XX_ed25519_ChaCha20Poly1305_Blake2S", name, "krach protocol name does not match");
+  free(krach);
+}
 
 void test_readWriteUint16(void) {
   uint8_t testInt[] = {0xE9,0x07};
@@ -206,6 +224,7 @@ int main(void) {
     RUN_TEST(test_readLVBlock);
     RUN_TEST(test_packHandshakeInit);
     RUN_TEST(test_unpackHandshakeResponse);
+    RUN_TEST(test_NoiseName);
     //RUN_TEST(test_packHandshakeFin);
     // RUN_TEST(test_makeNoiseHandshake);
     
