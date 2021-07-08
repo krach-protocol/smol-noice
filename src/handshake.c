@@ -67,7 +67,7 @@ sc_err_t sc_init(smolcert_t *cert,const char *addr,uint16_t port){
     krach->dh_id = NOISE_DH_CURVE25519;
     krach->hash_id = NOISE_HASH_BLAKE2s;
     krach->pattern_id = NOISE_PATTERN_XX;
-    krach->prefix_id = NOISE_PREFIX_STANDARD;
+    krach->prefix_id = NOISE_PREFIX_KRACH;
     err = noise_handshakestate_new_by_id(&handshakeState,krach,NOISE_ROLE_INITIATOR);
     
     if (err != NOISE_ERROR_NONE) {
