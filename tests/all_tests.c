@@ -189,6 +189,8 @@ void test_packHandshakeFin(void) {
   sn_msg_t msg;
   sc_err_t err = packHandshakeFin(&pkt, &msg);
   TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "Packing handshake fin packet failed");
+
+  //TODO: compare against crafted paket
 }
 
 void test_makeNoiseHandshake(void){
@@ -226,7 +228,7 @@ int main(void) {
     RUN_TEST(test_unpackHandshakeResponse);
     RUN_TEST(test_NoiseName);
     //RUN_TEST(test_packHandshakeFin);
-    // RUN_TEST(test_makeNoiseHandshake);
+    RUN_TEST(test_makeNoiseHandshake);
     
 
     return UNITY_END();

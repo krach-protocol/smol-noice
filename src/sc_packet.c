@@ -2,7 +2,7 @@
 #include "sc_err.h"
 #include <stdlib.h>
 #include <string.h>
-
+#include <stdio.h>
 /** Definitions from here:
  * for humans:      https://github.com/connctd/krach/blob/v2/refactor/spec/index.md
  * for non-humans:  https://github.com/connctd/krach/blob/v2/refactor/spec/protocol.specs
@@ -11,12 +11,26 @@
 
 // length in bytes
 #define SC_PACKET_LEN_LEN          2
+#define SC_ID_LENGTH_LEN           2
 #define SC_VERSION_LEN             1
 #define SC_TYPE_LEN                1
 #define SC_EPHEMERAL_PUB_KEY_LEN   32
 #define SC_MAX_PACKET_LEN          512 //set at runtime
 
 #define SC_VERSION                 0x01
+
+void printHex(uint8_t*,uint8_t);
+void printHex(uint8_t* key,uint8_t keyLen){
+  for(uint8_t i = 0; i < keyLen; i++)
+  {
+    if(i%16 == 0) printf("\n");
+    printf("%02x ",key[i]);
+    
+  }
+
+  printf("\n");
+  return;
+}
 
 uint16_t readUint16(uint8_t* buf) {
     uint16_t result = 0;
@@ -94,13 +108,18 @@ sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg){
     memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
     writePtr += SC_TYPE_LEN;
     //Write packet length to buffer and pay due to endianess
-    *writePtr = (packetLen&0xFF);
+    
+    *writePtr = (packetLen&0x00FF);
     writePtr++;
     *writePtr = (packetLen&0xFF00)>>8;
     writePtr++;
+    
 
     memcpy(writePtr,packet->ephemeralPubKey,SC_EPHEMERAL_PUB_KEY_LEN);
-    
+    printf("Init packet\n");
+    printHex(msg->msgBuf,msg->msgLen);
+
+
     return SC_OK;
 }
 
@@ -109,27 +128,34 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     uint8_t version = 0;
     uint16_t packetLen = 0;
     uint8_t* readPtr = msg->msgBuf;
+    sc_err_t err = SC_OK; 
     memcpy((uint8_t*)&(packet->HandshakeType), readPtr,SC_TYPE_LEN);
     if (packet->HandshakeType != HANDSHAKE_RESPONSE) {
         return SC_PAKET_ERR;
     }
+
+    printf("Unpacking Response: \n");
+    printHex(msg->msgBuf,msg->msgLen);
+
     readPtr += SC_TYPE_LEN;
     readBytes += SC_TYPE_LEN;
-
+    printf("Parsed Handshake Response @ %d bytes read\n",readBytes);
     if((readBytes + SC_PACKET_LEN_LEN + SC_TYPE_LEN) > SC_MAX_PACKET_LEN) return SC_PAKET_ERR;
+    
     packetLen = readUint16(readPtr);
     readPtr += SC_PACKET_LEN_LEN;
     readBytes += SC_PACKET_LEN_LEN;
-    if(readBytes >= (packetLen+SC_TYPE_LEN + SC_PACKET_LEN_LEN)) {
-        return SC_PAKET_ERR;
-    }
+    printf("Got paket len of %d bytes @ %d bytes read\n",packetLen,readBytes);
+    if(readBytes >= (packetLen+SC_TYPE_LEN + SC_PACKET_LEN_LEN)) return SC_PAKET_ERR;
+    
 
-    sc_err_t err = SC_OK;
 
     packet->ephemeralPubKey = (uint8_t*)malloc(SC_EPHEMERAL_PUB_KEY_LEN);
     memcpy((uint8_t*)(packet->ephemeralPubKey),readPtr,SC_EPHEMERAL_PUB_KEY_LEN);
     readPtr += SC_EPHEMERAL_PUB_KEY_LEN;
     readBytes += SC_EPHEMERAL_PUB_KEY_LEN;
+    printf("Got ephemereal Pubkey@ %d bytes read\n",readBytes);
+    printHex(packet->ephemeralPubKey,SC_EPHEMERAL_PUB_KEY_LEN);
 
     err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), &packet->smolcert, &packet->smolcertLen);
     if(err != SC_OK) {
@@ -138,12 +164,20 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     readPtr += (packet->smolcertLen+2);
     readBytes += (packet->smolcertLen+2);
 
+    printf("Got remote smolcert@ %d bytes read\n",readBytes);
+    printf("Smolcerlen: %d, unpadded len:%d\n",packet->smolcertLen,packet->smolcertLen-packet->smolcertLen%16);
+    printHex(packet->smolcert,packet->smolcertLen);
+
     err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), &packet->payload, &packet->payloadLen);
     if(err != SC_OK) {
         return err;
     }
     readPtr += (packet->payloadLen+2);
     readBytes += (packet->payloadLen+2);
+    
+    printf("Got remote payload@ %d bytes read\n",readBytes);
+    printf("Remotelen: %d, unpadded len:%d\n",packet->payloadLen,packet->payloadLen-packet->payloadLen%16);
+    printHex(packet->payload,packet->payloadLen);
     
     return err;
 }
@@ -155,22 +189,34 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
     uint8_t* writePtr;
 
     if(packet->HandshakeType != HANDSHAKE_FIN) return SC_PAKET_ERR;
-    
-    packetLen = SC_TYPE_LEN + SC_PACKET_LEN_LEN + SC_PACKET_LEN_LEN /*Length of identity payload */+ packet->encryptedPayloadLen;
+    packetLen = SC_TYPE_LEN + SC_PACKET_LEN_LEN +SC_ID_LENGTH_LEN + packet->encryptedIdentityLen + packet->encryptedPayloadLen ;
     
     msg->msgLen = (size_t)packetLen;
     msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
     writePtr = msg->msgBuf;
 
-    //Write packet length to buffer and pay due to endianess
-    *writePtr = packet->HandshakeType;
-    writePtr++;
-    writeUint16(writePtr, packetLen-3 /*subtract packet type and length field*/);
-    writePtr+=2; /* increase writePtr by length of length field */
+    memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
+    writePtr += SC_TYPE_LEN;
 
-    uint16_t lvBlockWritten;
-    writeLVBlock(writePtr, msg->msgLen - 3, packet->encryptedPayload, packet->encryptedPayloadLen, &lvBlockWritten);
-    writePtr += lvBlockWritten;
+    *writePtr = ((packetLen-3)&0x00FF);
+    writePtr++;
+    *writePtr = ((packetLen-3)&0xFF00)>>8;
+    writePtr++;
+    
+    *writePtr = (packet->encryptedIdentityLen&0x00FF);
+    writePtr++;
+    *writePtr = (packet->encryptedIdentityLen&0xFF00)>>8;
+    writePtr++;
+    memcpy(writePtr,packet->encryptedIdentity,packet->encryptedIdentityLen);
+
+
+    *writePtr = (packet->encryptedPayloadLen&0x00FF);
+    writePtr++;
+    *writePtr = (packet->encryptedPayloadLen&0xFF00)>>8;
+    memcpy(writePtr,packet->encryptedPayload,packet->encryptedPayloadLen);
+    //uint16_t lvBlockWritten;
+    //writeLVBlock(writePtr, msg->msgLen - 3, packet->encryptedPayload, packet->encryptedPayloadLen, &lvBlockWritten);
+    //writePtr += lvBlockWritten;
 
     // TODO prepare for additional payload
     

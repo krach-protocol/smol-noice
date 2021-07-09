@@ -6,7 +6,7 @@
 queue_err_e messageInQueue(queue_t* queue){
     queue_err_e err = EMPTY;
      if(queue->queueIdx > 0){
-        printf("DATA AVAILIBLE");
+        printf("data in Queue availible\n");
         err =  DATA_AVAILIBLE;
     }else{
         err =  EMPTY;

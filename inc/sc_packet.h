@@ -28,7 +28,9 @@ typedef struct{
 //HandshakeFin Client -> Server
 typedef struct{
     sc_packet_type_e    HandshakeType;
-    uint8_t             encryptedPayloadLen;
+    uint16_t            encryptedIdentityLen;
+    uint8_t*            encryptedIdentity;
+    uint16_t            encryptedPayloadLen;
     uint8_t*            encryptedPayload;
 } sc_handshakeFinPacket;
 

@@ -108,8 +108,8 @@ void* socketListenerTask(void* args){
 void sendOverNetwork(sn_msg_t* msg){
     size_t sentBytes = 0;
     sentBytes = send(sock , msg->msgBuf , msg->msgLen , 0 ); 
-    printf("Got message with length: %d\n",*((uint16_t*)msg->msgBuf));
-    printf("Sent %ld of %d bytes\n",sentBytes,msg->msgLen);
+    printf("Sending message with paket-version %02x paket-type %02x paket-length: %d\n",*((uint8_t*)(msg->msgBuf)),*((uint8_t*)(msg->msgBuf+1)),*((uint16_t*)(msg->msgBuf+2)) );
+    printf("Sent %ld of %d total bytes\n",sentBytes,msg->msgLen);
 }
 
 uint8_t messageFromNetwork(sn_msg_t* msg){

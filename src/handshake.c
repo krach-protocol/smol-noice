@@ -7,7 +7,7 @@
 
 #include <noise/protocol.h>
 
-
+#include "smolcert.h"
 #include "port.h"
 #include "sc_packet.h"
 #include "sn_msg.h"
@@ -42,6 +42,10 @@ sc_err_t readMessageDHES(NoiseHandshakeState *handshakeState, sc_handshakeRespon
 void* runnerTask(void* arg);
 
 
+void printHex(uint8_t*,uint8_t);
+void printExpecedAction(NoiseHandshakeState *handshakeState);
+
+
 
 /**
  * Since we know this implementation is fully based on the krach-protocol and is only used as
@@ -60,8 +64,25 @@ sc_err_t sc_init(smolcert_t *cert,const char *addr,uint16_t port){
     sc_err_t sc_err;
     NoiseDHState* dhState = NULL; 
     NoiseHandshakeState *handshakeState;// = (NoiseHandshakeState*)malloc(sizeof(NoiseHandshakeState));
-    NoiseProtocolId *krach = (NoiseProtocolId*)malloc(sizeof(NoiseProtocolId));
+    NoiseProtocolId krach = {0};//= (NoiseProtocolId*)malloc(sizeof(NoiseProtocolId));
     task_data_t *taskData = (task_data_t*)malloc(sizeof(task_data_t));
+    int noiseErr = 0;
+    char errBuf[32];
+
+    krach.cipher_id = NOISE_CIPHER_CHACHAPOLY;
+    krach.dh_id = NOISE_DH_CURVE25519;
+    krach.hash_id = NOISE_HASH_BLAKE2s;
+    //krach.hybrid_id = NULL;
+    krach.pattern_id = NOISE_PATTERN_XX;
+    krach.prefix_id = NOISE_PREFIX_KRACH;
+    //krach.reserved = {0};
+     
+
+    if((noiseErr = noise_handshakestate_new_by_id(&handshakeState,&krach,NOISE_ROLE_INITIATOR)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    }
 
     krach->cipher_id = NOISE_CIPHER_CHACHAPOLY;
     krach->dh_id = NOISE_DH_CURVE25519;
@@ -77,11 +98,18 @@ sc_err_t sc_init(smolcert_t *cert,const char *addr,uint16_t port){
 
     //set up ephmeral keypair
     // Set up local keypair 
-    dhState = noise_handshakestate_get_local_keypair_dh(handshakeState);
+    //dhState = noise_handshakestate_get_local_keypair_dh(handshakeState);
+    dhState = handshakeState->dh_local_ephemeral;
    
+    if(noise_handshakestate_get_fixed_ephemeral_dh(handshakeState) == NULL) printf("Doesnt have ephemeral key!");
     //if(noise_dhstate_set_role(dhState,NOISE_ROLE_INITIATOR) != NOISE_ERROR_NONE) return SC_ERR;	
     //TODO: Seed system RNG 
-    if(noise_dhstate_generate_keypair(dhState) != NOISE_ERROR_NONE) return SC_ERR;	
+
+    if((noiseErr = noise_dhstate_generate_keypair(dhState)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    }
 
 
     //TODO: Implement platform agnostic Taskstarter
@@ -107,17 +135,28 @@ sc_err_t writeMessageE(NoiseHandshakeState *handshakeState,sc_handshakeInitPacke
     NoiseDHState *dhState;   
     size_t pubKeyLen;
     uint8_t* pubKey;
+    int noiseErr = 0;
+    char errBuf[32];
     
-    dhState = noise_handshakestate_get_local_keypair_dh(handshakeState);
+    dhState = handshakeState->dh_local_ephemeral;
     pubKeyLen = noise_dhstate_get_public_key_length(dhState);
     pubKey = (uint8_t*)malloc(pubKeyLen);
-    printf("PubKeylen: %ld\n",pubKeyLen);
-    if(noise_dhstate_get_public_key(dhState,pubKey,pubKeyLen) != NOISE_ERROR_NONE) return SC_ERR;
+    
+    if((noiseErr = noise_dhstate_get_public_key(dhState,pubKey,pubKeyLen)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    }
     
     packet->ephemeralPubKey = (uint8_t*)malloc(pubKeyLen);
     memcpy(packet->ephemeralPubKey,pubKey,pubKeyLen);
 
-    if(noise_symmetricstate_mix_hash(symmState,pubKey,pubKeyLen) != NOISE_ERROR_NONE) return SC_ERR;
+    
+    if((noiseErr = noise_symmetricstate_mix_hash(symmState,pubKey,pubKeyLen)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    }
 
     free(pubKey);
    	return SC_OK;
@@ -140,7 +179,7 @@ void* runnerTask(void* arg){
         sleep_ms(500);
         switch(currentStep){
             case INIT_NETWORK:
-                printf("Init Network\n");
+                printf("State: INIT NETWORK\n");
                 if(openSocket(taskData->addr, taskData->port) == 0){
                     printf("Init ok\n");
                     currentStep = SEND_INIT;
@@ -151,7 +190,7 @@ void* runnerTask(void* arg){
             break;
 
             case SEND_INIT:
-                printf("Send Init\n");
+                printf("State: SEND INIT\n");
                 sc_err = writeMessageE(handshakeState,&initPaket);
 
                 initPaket.HandshakeType = HANDSHAKE_INIT;
@@ -167,7 +206,7 @@ void* runnerTask(void* arg){
             break;    
 
             case WAIT_FOR_RES:
-                printf("Wait for response\n");
+                printf("State: WAIT FOR RESPONSE\n");
                 if(messageFromNetwork(&networkMsg)){
                     sc_err = unpackHandshakeResponse(&responsePaket,&networkMsg);
 
@@ -182,10 +221,11 @@ void* runnerTask(void* arg){
             break;     
 
             case SEND_FIN:
-                printf("Send finish\n");
+                printf("State: SEND FINISH\n");
                 sc_err = writeMessageS_DHSE(handshakeState, &finPaket);
 
                 finPaket.HandshakeType = HANDSHAKE_FIN;
+                
                 
                 if(sc_err == SC_OK) sc_err = packHandshakeFin(&finPaket,&networkMsg);
 
@@ -199,7 +239,7 @@ void* runnerTask(void* arg){
             break;            
              
             case DO_TRANSPORT:
-                printf("Do transport\n");
+                printf("State: DO TRANSPORT\n");
                 //if(messageFromNetwork)
                 //unpackTransport
                 //decrypt
@@ -229,15 +269,23 @@ sc_err_t writeMessageS(NoiseHandshakeState *handshakeState, sc_handshakeFinPacke
     NoiseSymmetricState *symmState = handshakeState->symmetric;
     NoiseBuffer buff;
     noise_buffer_init(buff);
+    int noiseErr = 0;
+    char errBuf[32];
     
         //TODO A lot of sanity checks missing here
         // check if local pub key is availible
         // and convert ed25519 key in curve25519 and add it to the dh state.
+    
 
 
     // encryptedSPublic = s.symmState.EncryptAndHash(encryptedSPublic, idBytes) <-- is this right?
 	// msg.WriteEncryptedIdentity(encryptedSPublic)
-    if( noise_symmetricstate_encrypt_and_hash(symmState,&buff) != NOISE_ERROR_NONE) return SC_ERR;
+
+     if((noiseErr = noise_symmetricstate_encrypt_and_hash(symmState,&buff) != NOISE_ERROR_NONE)){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    }
 
     memcpy(&packet->encryptedPayload,&buff.data,buff.size);
     packet->encryptedPayloadLen = buff.size;
@@ -250,14 +298,32 @@ sc_err_t writeMessageDHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPa
     //- s.symmState.MixKey(s.symmState.DH(s.localIdentity.PrivateKey(), s.  ))
     NoiseSymmetricState *symmState = handshakeState->symmetric;
     NoiseDHState *dhStateRemoteEphemeral, *dhStateLocalPrivate;
+    NoiseCipherState *sendCipher, *receiveCipher;
     uint8_t* DHresult = NULL;
     size_t DHresultSize = 0;
+    int noiseErr = 0;
+    char errBuf[32];
+
+    dhStateRemoteEphemeral = noise_handshakestate_get_remote_public_key_dh(handshakeState); 
+    dhStateLocalPrivate = noise_handshakestate_get_local_keypair_dh(handshakeState);
    
-    dhStateRemoteEphemeral = noise_handshakestate_get_remote_public_key_dh(handshakeState); // <-- is this the remote eph key?
-    dhStateLocalPrivate = noise_handshakestate_get_local_keypair_dh(handshakeState); // wat?
-   
-    noise_dhstate_calculate(dhStateRemoteEphemeral,dhStateLocalPrivate,DHresult,DHresultSize);
-    noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize);
+    if((noiseErr =  noise_dhstate_calculate(dhStateRemoteEphemeral,dhStateLocalPrivate,DHresult,DHresultSize)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    }
+
+    if((noiseErr = noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    }
+
+    //split symmetric state for encrypt(first cipher) and decrypt(second cipher)
+
+    //see: http://rweather.github.io/noise-c/group__symmetricstate.html#gadf7cef60a64aef703add9b093c3b6c63
+
+    if(noise_symmetricstate_split(symmState,&sendCipher,&receiveCipher) != NOISE_ERROR_NONE ) return SC_ERR;	
 
     return SC_OK;
 }
@@ -265,6 +331,13 @@ sc_err_t writeMessageDHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPa
 sc_err_t writeMessageS_DHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPacket* packet){
     writeMessageS(handshakeState, packet);
     writeMessageDHSE(handshakeState, packet); 
+
+    //TODO: encrypt identity and payload
+    packet->encryptedIdentity = NULL;
+    packet->encryptedIdentityLen = 0;
+    packet->encryptedPayload = NULL;
+    packet->encryptedPayloadLen = 0;
+    
     return SC_OK;
 }
 
@@ -277,25 +350,61 @@ sc_err_t readMessageE(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
 	//s.symmState.MixHash(s.remoteEphemeralPubKey[:])
     
     NoiseSymmetricState *symmState = handshakeState->symmetric;
-    noise_symmetricstate_mix_hash(symmState,packet->ephemeralPubKey,32);
+    if(noise_symmetricstate_mix_hash(symmState,packet->ephemeralPubKey,32)!= NOISE_ERROR_NONE) return SC_ERR;
     
     return SC_OK;
 }
 
 sc_err_t readMessageDHEE(NoiseHandshakeState *handshakeState, sc_handshakeResponsePacket *packet){
     //s.symmState.MixKey(s.symmState.DH(s.ephemeralDHKey.Private, s.remoteEphemeralPubKey))
-    NoiseDHState *localFEDH = noise_handshakestate_get_fixed_ephemeral_dh(handshakeState); //TODO: Really?
+
+    //NoiseDHState *localKeypair = noise_handshakestate_get_fixed_ephemeral_dh(handshakeState); //TODO: Really?
+    NoiseDHState *localKeypair = handshakeState->dh_local_ephemeral;//noise_handshakestate_get_local_keypair_dh(handshakeState); //TODO: Really?
     NoiseDHState *remoteEPPK = noise_handshakestate_get_remote_public_key_dh(handshakeState); //TODO: Really?
     NoiseSymmetricState *symmState = handshakeState->symmetric;
-    uint8_t* DHresult = NULL;
-    size_t DHresultSize = 0;
+    uint8_t DHresult[32];
+    size_t DHresultSize = 32;
 
-    noise_dhstate_calculate(localFEDH,remoteEPPK,DHresult,DHresultSize);
-    noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize);
+    int noiseErr = 0;
+    char errBuf[32];
+
+    printf("private key len: %ld\n",noise_dhstate_get_private_key_length(localKeypair));
+    if(noise_handshakestate_has_local_keypair(handshakeState) == 1) printf("Has local keypair\n");
+
+    if((noiseErr = noise_dhstate_set_public_key(remoteEPPK, packet->ephemeralPubKey, 32)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    }
+
+    printf("Calculating DH state\n");
+    if((noiseErr = noise_dhstate_calculate(localKeypair,remoteEPPK,DHresult,DHresultSize)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    } 
+
+    printHex(DHresult,DHresultSize);
+
+    printf("Mixing keys\n");
+    if((noiseErr = noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    }
     return SC_OK;
 }
 
 sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponsePacket *packet){
+     NoiseDHState* remotePubKeyDH = NULL;
+     uint8_t remotePubKey[32];
+     smolcert_t remoteCert = {0};
+
+    uint8_t* DHresult = NULL;
+    size_t DHresultSize = 0;
+    int noiseErr = 0;
+    char errBuf[32];
+
     //TODO Sanity checks missing here
     /* idBytes, err := msg.ReadEncryptedIdentity()
 	var decryptedRawIdentity []byte
@@ -311,13 +420,59 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
     */
    NoiseSymmetricState *symmState = handshakeState->symmetric;
    NoiseBuffer idBuffer;
+    NoiseBuffer decryptedCertBuffer;
+    uint8_t* decryptedCert= (uint8_t*)malloc(packet->smolcertLen);
+   printf("Payload len: %d",packet->smolcertLen);
+   printHex(packet->smolcert,packet->smolcertLen);
+
+
    noise_buffer_init(idBuffer);
-   noise_buffer_set_input(idBuffer, packet->payload,packet->payloadLen);
-   noise_symmetricstate_decrypt_and_hash(symmState,&idBuffer);
+   noise_buffer_init(decryptedCertBuffer);
+   noise_buffer_set_input(idBuffer, packet->smolcert,packet->smolcertLen);
+   noise_buffer_set_output(decryptedCertBuffer, decryptedCert,packet->smolcertLen);
+   
+    printf("Decrypting cert\n");
+
+   if((noiseErr = noise_symmetricstate_decrypt_and_hash(symmState,&idBuffer)) != NOISE_ERROR_NONE){
+        noise_strerror(noiseErr, errBuf, 32);
+        printf("Noise Error: %s \n",errBuf);
+        return SC_ERR;
+    } 
+    printf("Decrypted cert\n");
+    printHex(decryptedCert,packet->smolcertLen);
+
+   //TODO: write pad and unpad function for certBuffer
    
    //now idBuffer should contain a the server smolcert - go and validate
-   // also we need to convert the ed25519 to curve25510, see krach -> smolcert.go:16
+   // also we need to convert the ed25519 to curve25519, see krach -> smolcert.go:16
    // Need to add received pub key somehow to dhstate...
+
+    printf("Parsing remote cert...\n");
+    //printf("smolcert: %s\n",packet->smolcert);
+
+    if(sc_parse_certificate(packet->smolcert,packet->smolcertLen, &remoteCert) != SC_OK) return SC_ERR;
+
+    printf("Remote pubkey: %s \n",(char*)remoteCert.public_key);    
+    if(sc_validate_certificate_signature(packet->smolcert, packet->smolcertLen, remoteCert.public_key) != SC_OK) return SC_ERR;
+
+    //TODO: merge get_curve in master branch or checkout dev-branch
+    if(sc_get_curve_public_key(&remoteCert,remotePubKey) != SC_OK) return SC_ERR;
+
+   //See: http://rweather.github.io/noise-c/group__handshakestate.html#ga1e34b02757ddef3481caccf85c9a1d54
+    remotePubKeyDH = noise_handshakestate_get_remote_public_key_dh(handshakeState);
+    if(remotePubKeyDH == NULL) return SC_ERR;
+
+    //See: http://rweather.github.io/noise-c/group__dhstate.html#gac6fa00b45a6db3bb405ed1163e09ae95
+    if(NOISE_ERROR_NONE != noise_dhstate_set_public_key(remotePubKeyDH,remotePubKey,32)) return SC_ERR;
+
+    
+    //TODO: perform some black magic on handShakeState
+    NoiseDHState *dhStateLocalPrivate = noise_handshakestate_get_local_keypair_dh(handshakeState);
+    
+    noise_dhstate_calculate(dhStateLocalPrivate,remotePubKeyDH,DHresult,DHresultSize);
+    noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize);
+
+
    return SC_OK;
 }
 
@@ -334,9 +489,15 @@ sc_err_t readMessageDHES(NoiseHandshakeState *handshakeState, sc_handshakeRespon
     return SC_OK;
 }
 sc_err_t readMessageE_DHEE_S_DHES(NoiseHandshakeState *handshakeState, sc_handshakeResponsePacket *packet){
-    readMessageE(handshakeState, packet);
-    readMessageDHEE(handshakeState, packet);
-    readMessageS(handshakeState, packet);
-    readMessageDHES(handshakeState, packet);
+    if(readMessageE(handshakeState, packet) != SC_OK) return SC_ERR;
+    if(readMessageDHEE(handshakeState, packet) != SC_OK) return SC_ERR;
+    if(readMessageS(handshakeState, packet) != SC_OK) return SC_ERR;
+    if(readMessageDHES(handshakeState, packet) != SC_OK) return SC_ERR;
     return SC_OK;
+}
+
+
+
+void printExpecedAction(NoiseHandshakeState *handshakeState){
+
 }
