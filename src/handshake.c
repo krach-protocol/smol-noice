@@ -84,24 +84,18 @@ sc_err_t sc_init(smolcert_t *cert,const char *addr,uint16_t port){
         return SC_ERR;
     }
 
-    krach->cipher_id = NOISE_CIPHER_CHACHAPOLY;
-    krach->dh_id = NOISE_DH_CURVE25519;
-    krach->hash_id = NOISE_HASH_BLAKE2s;
-    krach->pattern_id = NOISE_PATTERN_XX;
-    krach->prefix_id = NOISE_PREFIX_KRACH;
-    err = noise_handshakestate_new_by_id(&handshakeState,krach,NOISE_ROLE_INITIATOR);
-    
+    /*
     if (err != NOISE_ERROR_NONE) {
         noise_perror(NULL, err);
            return SC_ERR;
-    }  
+    } */ 
 
     //set up ephmeral keypair
     // Set up local keypair 
     //dhState = noise_handshakestate_get_local_keypair_dh(handshakeState);
     dhState = handshakeState->dh_local_ephemeral;
    
-    if(noise_handshakestate_get_fixed_ephemeral_dh(handshakeState) == NULL) printf("Doesnt have ephemeral key!");
+    //if(noise_handshakestate_get_fixed_ephemeral_dh(handshakeState) == NULL) printf("Doesnt have ephemeral key!");
     //if(noise_dhstate_set_role(dhState,NOISE_ROLE_INITIATOR) != NOISE_ERROR_NONE) return SC_ERR;	
     //TODO: Seed system RNG 
 
