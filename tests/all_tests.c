@@ -57,7 +57,7 @@ void test_NoiseName(void) {
 
   int err = noise_protocol_id_to_name(name, sizeof(name), krach);
   TEST_ASSERT_EQUAL_MESSAGE(NOISE_ERROR_NONE, err, "Formatting of noise protocol name failed");
-  TEST_ASSERT_EQUAL_STRING_MESSAGE("Krach_XX_ed25519_ChaCha20Poly1305_Blake2S", name, "krach protocol name does not match");
+  TEST_ASSERT_EQUAL_STRING_MESSAGE("Krach_XX_25519_ChaChaPoly_BLAKE2s", name, "krach protocol name does not match");
   free(krach);
 }
 
