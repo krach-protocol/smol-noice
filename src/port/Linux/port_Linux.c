@@ -36,40 +36,30 @@ void startTask(void* (*workerTask)(void*),void* args){
 
 uint8_t openSocket(char* addr,uint16_t port){
     struct sockaddr_in serv_addr; 
-    printf("Open socket\n");
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         printf("ERROR");
         return 1;	 
-    } 
-    printf("Socket ok\n");
-        
+    }    
 	
     serv_addr.sin_family = AF_INET; 
 	serv_addr.sin_port = htons(port);
-	//serv_addr.sin_port = htons(9095);
-
-    printf("Convert address\n");
+	
     if(inet_pton(AF_INET, addr, &serv_addr.sin_addr)<=0) {
         printf("ERROR");
         return 1; 
     }
-    printf("Convert address ok\n");
-    //if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0) return 0; 
-
-    
+   
     printf("Connecting to: %s:%d\n",addr,port);
    if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
        printf("Error : Connect Failed \n");
        return 1;
     } 
-    printf("Connect ok\n");
 
-    printf("initializing rx Queue\n");
     if((rxQueue = initQueue(QUEUE_LEN)) == NULL){
        printf(" Error : Init Queue Failed \n");   
     }
-    printf("Init Queue ok\n");
+    
 
     pthread_mutex_init(&lock, NULL);
     startTask(socketListenerTask,(void*)rxQueue);    
@@ -90,7 +80,6 @@ void* socketListenerTask(void* args){
             errsv = errno;
             //printf("Error on socket: %s\n",strerror(errno));
          } else if(readResult > 0){
-             printf("Read %d bytes from socket\n",readResult);
              bytesRead += readResult;
              //Rx complete
              rxMsg = (sn_msg_t*)malloc(sizeof(sn_msg_t));
@@ -108,8 +97,6 @@ void* socketListenerTask(void* args){
 void sendOverNetwork(sn_msg_t* msg){
     size_t sentBytes = 0;
     sentBytes = send(sock , msg->msgBuf , msg->msgLen , 0 ); 
-    printf("Sending message with paket-version %02x paket-type %02x paket-length: %d\n",*((uint8_t*)(msg->msgBuf)),*((uint8_t*)(msg->msgBuf+1)),*((uint16_t*)(msg->msgBuf+2)) );
-    printf("Sent %ld of %d total bytes\n",sentBytes,msg->msgLen);
 }
 
 uint8_t messageFromNetwork(sn_msg_t* msg){

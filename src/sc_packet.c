@@ -27,7 +27,6 @@ void printHex(uint8_t* key,uint8_t keyLen){
     printf("%02x ",key[i]);
     
   }
-
   printf("\n");
   return;
 }
@@ -49,21 +48,9 @@ sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t** dst, uint16_t *dst
         return SC_ERR;
     }
     *dstlen = readUint16(buf);
-    if(bufLen < (*dstlen+2)) {
-        // Provided buffer is too small to contain a valid LV block
-        return SC_ERR;
-    }
-    
-    if(*dstlen+2 > bufLen) {
-        return SC_ERR;
-    }
 
-    /*dst = (uint8_t*)malloc(*dstlen);
-    if(dst == NULL) {
-        // Allocation failed
-        return SC_ERR;
-    }
-    memcpy(dst, buf+2, *dstlen);*/
+    if(bufLen < (*dstlen+2)) return SC_ERR; // Provided buffer is too small to contain a valid LV block
+
     *dst = buf+2;
 
     return SC_OK;
@@ -116,9 +103,6 @@ sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg){
     
 
     memcpy(writePtr,packet->ephemeralPubKey,SC_EPHEMERAL_PUB_KEY_LEN);
-    printf("Init packet\n");
-    printHex(msg->msgBuf,msg->msgLen);
-
 
     return SC_OK;
 }
@@ -134,18 +118,13 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
         return SC_PAKET_ERR;
     }
 
-    printf("Unpacking Response: \n");
-    printHex(msg->msgBuf,msg->msgLen);
-
     readPtr += SC_TYPE_LEN;
     readBytes += SC_TYPE_LEN;
-    printf("Parsed Handshake Response @ %d bytes read\n",readBytes);
     if((readBytes + SC_PACKET_LEN_LEN + SC_TYPE_LEN) > SC_MAX_PACKET_LEN) return SC_PAKET_ERR;
     
     packetLen = readUint16(readPtr);
     readPtr += SC_PACKET_LEN_LEN;
     readBytes += SC_PACKET_LEN_LEN;
-    printf("Got paket len of %d bytes @ %d bytes read\n",packetLen,readBytes);
     if(readBytes >= (packetLen+SC_TYPE_LEN + SC_PACKET_LEN_LEN)) return SC_PAKET_ERR;
     
 
@@ -154,8 +133,6 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     memcpy((uint8_t*)(packet->ephemeralPubKey),readPtr,SC_EPHEMERAL_PUB_KEY_LEN);
     readPtr += SC_EPHEMERAL_PUB_KEY_LEN;
     readBytes += SC_EPHEMERAL_PUB_KEY_LEN;
-    printf("Got ephemereal Pubkey@ %d bytes read\n",readBytes);
-    printHex(packet->ephemeralPubKey,SC_EPHEMERAL_PUB_KEY_LEN);
 
     err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), &packet->smolcert, &packet->smolcertLen);
     if(err != SC_OK) {
@@ -164,10 +141,6 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     readPtr += (packet->smolcertLen+2);
     readBytes += (packet->smolcertLen+2);
 
-    printf("Got remote smolcert@ %d bytes read\n",readBytes);
-    printf("Smolcerlen: %d, unpadded len:%d\n",packet->smolcertLen,packet->smolcertLen-packet->smolcertLen%16);
-    printHex(packet->smolcert,packet->smolcertLen);
-
     err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), &packet->payload, &packet->payloadLen);
     if(err != SC_OK) {
         return err;
@@ -175,9 +148,6 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     readPtr += (packet->payloadLen+2);
     readBytes += (packet->payloadLen+2);
     
-    printf("Got remote payload@ %d bytes read\n",readBytes);
-    printf("Remotelen: %d, unpadded len:%d\n",packet->payloadLen,packet->payloadLen-packet->payloadLen%16);
-    printHex(packet->payload,packet->payloadLen);
     
     return err;
 }
@@ -218,8 +188,6 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
     //writeLVBlock(writePtr, msg->msgLen - 3, packet->encryptedPayload, packet->encryptedPayloadLen, &lvBlockWritten);
     //writePtr += lvBlockWritten;
 
-    // TODO prepare for additional payload
-    
     return SC_OK;
 
 }

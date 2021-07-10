@@ -6,7 +6,6 @@
 queue_err_e messageInQueue(queue_t* queue){
     queue_err_e err = EMPTY;
      if(queue->queueIdx > 0){
-        printf("data in Queue availible\n");
         err =  DATA_AVAILIBLE;
     }else{
         err =  EMPTY;
@@ -32,7 +31,6 @@ queue_err_e addToQueue(queue_t* queue, sn_msg_t* data){
     }else{
         queue->data[queue->queueIdx] = data;
         queue->queueIdx++;
-        printf("new Element in queue\n");
         err = OK;
     }
     return err;
