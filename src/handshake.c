@@ -19,8 +19,8 @@ typedef enum{INIT_NETWORK,SEND_INIT,WAIT_FOR_RES,SEND_FIN,DO_TRANSPORT,ERROR} ha
 typedef struct {
     char* addr;
     uint16_t port;
-    smolcert_t* clientCert;
-    smolcert_t *rootCert;
+    sn_buffer_t* clientCert;
+    sn_buffer_t *rootCert;
     remoteCertCb_t certCallback;
     newTransportCb_t transportCallback;
     NoiseHandshakeState* handshake;
@@ -30,8 +30,8 @@ typedef struct {
 //Internal functions
 sc_err_t writeMessageE(NoiseHandshakeState *handshakeState,sc_handshakeInitPacket* packet);
 
-sc_err_t writeMessageS_DHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPacket* packet);
-sc_err_t writeMessageS(NoiseHandshakeState *handshakeState,sc_handshakeFinPacket* packet);
+sc_err_t writeMessageS_DHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPacket* packet,sn_buffer_t* clientCert);
+sc_err_t writeMessageS(NoiseHandshakeState *handshakeState,sc_handshakeFinPacket* packet,sn_buffer_t* clientCert);
 sc_err_t writeMessageDHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPacket* packet);
 
 sc_err_t readMessageE_DHEE_S_DHES(NoiseHandshakeState *handshakeState,sc_handshakeResponsePacket *packet);
@@ -52,6 +52,9 @@ sc_err_t printNoiseErr(int);
 #define NOISE_ERROR_CHECK(error) \
     if(printNoiseErr(error) != SC_OK) return SC_ERR;
 
+//Padding
+sc_err_t padBuffer(sn_buffer_t*);
+sc_err_t unpadBuffer(sn_buffer_t*);
 
 /**
  * Since we know this implementation is fully based on the krach-protocol and is only used as
@@ -65,8 +68,8 @@ sc_err_t printNoiseErr(int);
 */
 
 
-sc_err_t sc_init(   smolcert_t *clientCert,
-                    smolcert_t *rootCert,
+sc_err_t sc_init(   sn_buffer_t *clientCert,
+                    sn_buffer_t *rootCert,
                     remoteCertCb_t certCallback,
                     newTransportCb_t transportCallback,
                     const char *addr,
@@ -169,7 +172,7 @@ void* runnerTask(void* arg){
             case SEND_FIN:
                 printf("State: SEND FINISH\n");
 
-                STATE_ERROR_CHECK(writeMessageS_DHSE(handshakeState, &finPaket));
+                STATE_ERROR_CHECK(writeMessageS_DHSE(handshakeState, &finPaket, taskData->clientCert));
 
                 finPaket.HandshakeType = HANDSHAKE_FIN;
                 STATE_ERROR_CHECK(packHandshakeFin(&finPaket,&networkMsg));
@@ -196,7 +199,7 @@ void* runnerTask(void* arg){
                 run = false;
             break;        
 
-            default:
+            default: 
                 //wat?
             break;
     }
@@ -228,23 +231,31 @@ sc_err_t writeMessageE(NoiseHandshakeState *handshakeState,sc_handshakeInitPacke
    	return SC_OK;
 }
 
-sc_err_t writeMessageS(NoiseHandshakeState *handshakeState, sc_handshakeFinPacket* packet){
+sc_err_t writeMessageS(NoiseHandshakeState *handshakeState, sc_handshakeFinPacket* packet,sn_buffer_t* clientCert){
     NoiseSymmetricState *symmState = handshakeState->symmetric;
     NoiseBuffer buff;
     noise_buffer_init(buff);
     int noiseErr = 0;
     char errBuf[32];
+    uint8_t certLen = clientCert->msgLen;
     
+    //printHex(clientCert->msgBuf,clientCert->msgLen);
+    //printf("CertLen: %d ",clientCert->msgLen);
+    padBuffer(clientCert);
 
+    printHex(clientCert->msgBuf,clientCert->msgLen);
+    noise_buffer_set_inout(buff,clientCert->msgBuf,certLen+1,clientCert->msgLen);
     //Padded smolcert in buffer
     //IMPORTANT: Buffersize: n byte smolcert + 16byte MAC + padding%16 (1-15byte)
     //prepend number of appended bytes(prepended byte not included)
     //encrypt identity inplace?
 
     NOISE_ERROR_CHECK(noise_symmetricstate_encrypt_and_hash(symmState,&buff));
+    printHex(clientCert->msgBuf,clientCert->msgLen);
 
-    memcpy(&packet->encryptedIdentity,&buff.data,buff.size);
-    packet->encryptedIdentityLen = buff.size;
+    packet->encryptedIdentityLen = clientCert->msgLen;
+    packet->encryptedIdentity = (uint8_t*)malloc(packet->encryptedIdentityLen);
+    memcpy(packet->encryptedIdentity,clientCert->msgBuf,packet->encryptedIdentityLen);
     packet->HandshakeType = HANDSHAKE_FIN;
     
     return SC_OK;
@@ -254,15 +265,17 @@ sc_err_t writeMessageDHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPa
     NoiseSymmetricState *symmState = handshakeState->symmetric;
     NoiseDHState *remoteStaticKeypair, *localEphemeralKeypair;
     NoiseCipherState *sendCipher, *receiveCipher;
-    uint8_t* DHresult = NULL;
-    size_t DHresultSize = 0;
+    uint8_t DHresult[32];
+    size_t DHresultSize = 32;
     int noiseErr = 0;
     char errBuf[32];
 
     remoteStaticKeypair = noise_handshakestate_get_remote_public_key_dh(handshakeState); 
     localEphemeralKeypair = handshakeState->dh_local_ephemeral;
    
+    printf("Calc DH state\n");
     NOISE_ERROR_CHECK(noise_dhstate_calculate(localEphemeralKeypair,remoteStaticKeypair,DHresult,DHresultSize));
+    printf("Mix symmstate\n");
     NOISE_ERROR_CHECK(noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize));
     
 
@@ -274,18 +287,18 @@ sc_err_t writeMessageDHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPa
     return SC_OK;
 }
 
-sc_err_t writeMessageS_DHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPacket* packet){
-    SC_ERROR_CHECK(writeMessageS(handshakeState, packet));
+sc_err_t writeMessageS_DHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPacket* packet,sn_buffer_t* clientCert){
+    SC_ERROR_CHECK(writeMessageS(handshakeState, packet,clientCert));
     SC_ERROR_CHECK(writeMessageDHSE(handshakeState, packet));
     
 
     //TODO: encrypt identity and payload
-    //TODO: Provide access to local identity here
-    packet->encryptedIdentity = NULL;
+    //TODO: Provide access to local identity here [x]
+    /*packet->encryptedIdentity = NULL;
     packet->encryptedIdentityLen = 0;
     packet->encryptedPayload = NULL;
     packet->encryptedPayloadLen = 0;
-    
+    */
     return SC_OK;
 }
 
@@ -362,7 +375,7 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
 
     SC_ERROR_CHECK(sc_get_curve_public_key(&remoteCert,remotePubKey));
     
-    //Finally set the public Key
+    //Finally set the remote public Key in handshake state
     remoteStaticKeypair = noise_handshakestate_get_remote_public_key_dh(handshakeState);
     if(remoteStaticKeypair == NULL) return SC_ERR;
     NOISE_ERROR_CHECK(noise_dhstate_set_public_key(remoteStaticKeypair,remotePubKey,32))
@@ -408,5 +421,27 @@ sc_err_t printNoiseErr(int noiseErr){
         return SC_ERR;
     }
 
+    return SC_OK;
+}
+
+
+sc_err_t padBuffer(sn_buffer_t* buffer){
+    uint8_t bufferLen = buffer->msgLen;
+    uint8_t paddedBytes = (16-((bufferLen+16+1)%16));
+    uint8_t newLen = paddedBytes+bufferLen+16+1;
+    buffer->msgBuf = realloc(buffer->msgBuf,newLen);
+
+    if(buffer->msgBuf == NULL) return SC_ERR;
+    buffer->msgLen = newLen;
+
+    for(uint8_t idx = bufferLen+1;idx>0;idx--){
+        buffer->msgBuf[idx] = buffer->msgBuf[idx-1];
+    }
+    buffer->msgBuf[0]=paddedBytes;    
+
+
+    return SC_OK;
+}
+sc_err_t unpadBuffer(sn_buffer_t* buffer){
     return SC_OK;
 }

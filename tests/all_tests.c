@@ -25,7 +25,7 @@ void test_readLVBlock(void);
 void test_writeLVBlock(void);
 void test_NoiseName(void);
 
-sc_error_t loadSmolCert(const char*,smolcert_t**);
+sc_error_t loadSmolCert(const char*,smolcert_t**,sn_buffer_t*);
 
 #define DUMMY_PUBKEY 0x66 ,0x82 ,0x79 ,0x97 ,0x37 ,0xB7 ,0x6C ,0x17 , \
                       0xC3 ,0x5B ,0x95 ,0x57 ,0x44 ,0x9A ,0x86 ,0x22 , \
@@ -142,6 +142,7 @@ void test_packHandshakeInit(void){
   smolcert_t *testCert;
   sc_err_t err;
   sn_msg_t testMsg;
+  sn_buffer_t certBuffer;
   sc_handshakeInitPacket testPacket;
   char certFilePath[CWD_BUF_SIZE];
 
@@ -149,7 +150,7 @@ void test_packHandshakeInit(void){
   testCert = (smolcert_t*)malloc(sizeof(smolcert_t));
   getcwd(certFilePath, CWD_BUF_SIZE);
   strcat(certFilePath,CERT_PATH);
-  err =  loadSmolCert(certFilePath,&testCert);
+  err =  loadSmolCert(certFilePath,&testCert,&certBuffer);
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
 
   
@@ -203,10 +204,12 @@ void test_makeNoiseHandshake(void){
   strcat(certFilePath,CERT_PATH);
   printf("Full certpath: %s\n",certFilePath);
   
-  err =  loadSmolCert(certFilePath,&clientCert);
+  sn_buffer_t clientCertBuffer;
+  sn_buffer_t rootCertBuffer;
+  err =  loadSmolCert(certFilePath,&clientCert,&clientCertBuffer);
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
   if(err == Sc_No_Error){
-    sc_init(clientCert,NULL,NULL,NULL,host,9095);
+    sc_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
   }else{
     printf("Error initialzing cert");
   }
@@ -239,9 +242,9 @@ int main(void) {
 
 
 // Utility
-sc_error_t loadSmolCert(const char* fileName,smolcert_t** cert){
+sc_error_t loadSmolCert(const char* fileName,smolcert_t** cert,sn_buffer_t* buffer){
   FILE *fp;
-  uint8_t* buf;
+  //uint8_t* buf;
   size_t bufSize;
   
   sc_error_t sc_err;
@@ -253,12 +256,12 @@ sc_error_t loadSmolCert(const char* fileName,smolcert_t** cert){
   }
 
   fseek(fp,0,SEEK_END);
-  bufSize = ftell(fp);
+  buffer->msgLen = ftell(fp);
   rewind(fp);
 
-  buf = (uint8_t*)malloc(bufSize);
-  fread(buf,1,bufSize,fp);
-  sc_err = sc_parse_certificate(buf,bufSize, *cert);
-  free(buf);
+  buffer->msgBuf = (uint8_t*)malloc(buffer->msgLen);
+  fread(buffer->msgBuf,1,buffer->msgLen,fp);
+
+  sc_err = sc_parse_certificate(buffer->msgBuf,buffer->msgLen, *cert);
   return sc_err;
 }

@@ -159,34 +159,41 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
     uint8_t* writePtr;
 
     if(packet->HandshakeType != HANDSHAKE_FIN) return SC_PAKET_ERR;
-    packetLen = SC_TYPE_LEN + SC_PACKET_LEN_LEN +SC_ID_LENGTH_LEN + packet->encryptedIdentityLen + packet->encryptedPayloadLen ;
+    packetLen = SC_TYPE_LEN + SC_PACKET_LEN_LEN + packet->encryptedIdentityLen;// + packet->encryptedPayloadLen ;
     
     msg->msgLen = (size_t)packetLen;
     msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
     writePtr = msg->msgBuf;
 
+    
     memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
     writePtr += SC_TYPE_LEN;
 
-    *writePtr = ((packetLen-3)&0x00FF);
+    *writePtr = ((packetLen-(SC_TYPE_LEN + SC_PACKET_LEN_LEN))&0x00FF);
     writePtr++;
-    *writePtr = ((packetLen-3)&0xFF00)>>8;
+    *writePtr = ((packetLen-(SC_TYPE_LEN + SC_PACKET_LEN_LEN))&0xFF00)>>8;
     writePtr++;
     
+
     *writePtr = (packet->encryptedIdentityLen&0x00FF);
     writePtr++;
     *writePtr = (packet->encryptedIdentityLen&0xFF00)>>8;
     writePtr++;
+    printHex(packet->encryptedIdentity,packet->encryptedIdentityLen);
+   
+
     memcpy(writePtr,packet->encryptedIdentity,packet->encryptedIdentityLen);
+    writePtr+=packet->encryptedIdentityLen;
 
-
-    *writePtr = (packet->encryptedPayloadLen&0x00FF);
-    writePtr++;
-    *writePtr = (packet->encryptedPayloadLen&0xFF00)>>8;
-    memcpy(writePtr,packet->encryptedPayload,packet->encryptedPayloadLen);
+    
+    //*writePtr = (packet->encryptedPayloadLen&0x00FF);
+    //writePtr++;
+    //*writePtr = (packet->encryptedPayloadLen&0xFF00)>>8;
+    //memcpy(writePtr,packet->encryptedPayload,packet->encryptedPayloadLen);
     //uint16_t lvBlockWritten;
     //writeLVBlock(writePtr, msg->msgLen - 3, packet->encryptedPayload, packet->encryptedPayloadLen, &lvBlockWritten);
     //writePtr += lvBlockWritten;
+    printHex(msg->msgBuf,msg->msgLen);
 
     return SC_OK;
 

@@ -6,6 +6,6 @@
 typedef struct{
     uint16_t msgLen;
     uint8_t* msgBuf;
-} sn_msg_t;
+} sn_msg_t,sn_buffer_t;
 
 #endif
