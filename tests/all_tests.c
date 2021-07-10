@@ -206,7 +206,7 @@ void test_makeNoiseHandshake(void){
   err =  loadSmolCert(certFilePath,&clientCert);
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
   if(err == Sc_No_Error){
-    sc_init(clientCert,host,9095);
+    sc_init(clientCert,NULL,NULL,NULL,host,9095);
   }else{
     printf("Error initialzing cert");
   }

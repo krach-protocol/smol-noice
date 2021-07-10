@@ -17,9 +17,12 @@ typedef enum{INIT_NETWORK,SEND_INIT,WAIT_FOR_RES,SEND_FIN,DO_TRANSPORT,ERROR} ha
 
 //Internal struct for throwing data at worker task
 typedef struct {
-    smolcert_t* cert;
     char* addr;
     uint16_t port;
+    smolcert_t* clientCert;
+    smolcert_t *rootCert;
+    remoteCertCb_t certCallback;
+    newTransportCb_t transportCallback;
     NoiseHandshakeState* handshake;
 } task_data_t;
 
@@ -62,7 +65,13 @@ sc_err_t printNoiseErr(int);
 */
 
 
-sc_err_t sc_init(smolcert_t *cert,const char *addr,uint16_t port){
+sc_err_t sc_init(   smolcert_t *clientCert,
+                    smolcert_t *rootCert,
+                    remoteCertCb_t certCallback,
+                    newTransportCb_t transportCallback,
+                    const char *addr,
+                    uint16_t port)
+    {
     int err;
     sc_err_t sc_err;
     NoiseDHState* localEphemeralKeypair = NULL; 
@@ -91,7 +100,10 @@ sc_err_t sc_init(smolcert_t *cert,const char *addr,uint16_t port){
     taskData->addr = (char*)malloc(strlen(addr));
     strcpy(taskData->addr,addr);
     taskData->port = port;
-    taskData->cert = cert;
+    taskData->clientCert = clientCert;
+    taskData->rootCert = rootCert;
+    taskData->certCallback = certCallback;
+    taskData->transportCallback = transportCallback;
     taskData->handshake = handshakeState;
     
     startTask(&runnerTask,(void*)taskData);    
