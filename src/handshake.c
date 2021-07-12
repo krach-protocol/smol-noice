@@ -93,7 +93,6 @@ sc_err_t sc_init(   sn_buffer_t *clientCert,
 
     NOISE_ERROR_CHECK(noise_handshakestate_new_by_id(&handshakeState,&krach,NOISE_ROLE_INITIATOR));
 
-    //set up ephmeral keypair
     //TODO: Seed system RNG 
     localEphemeralKeypair = handshakeState->dh_local_ephemeral;
     NOISE_ERROR_CHECK(noise_dhstate_generate_keypair(localEphemeralKeypair));
@@ -200,7 +199,8 @@ void* runnerTask(void* arg){
             break;        
 
             default: 
-                //wat?
+                printf("Unknown state, you should never see this message - abort!\n");
+                run = false;
             break;
     }
 }
@@ -239,19 +239,11 @@ sc_err_t writeMessageS(NoiseHandshakeState *handshakeState, sc_handshakeFinPacke
     char errBuf[32];
     uint8_t certLen = clientCert->msgLen;
     
-    //printHex(clientCert->msgBuf,clientCert->msgLen);
-    //printf("CertLen: %d ",clientCert->msgLen);
     padBuffer(clientCert);
-
-    printHex(clientCert->msgBuf,clientCert->msgLen);
-    noise_buffer_set_inout(buff,clientCert->msgBuf,certLen+1,clientCert->msgLen);
-    //Padded smolcert in buffer
-    //IMPORTANT: Buffersize: n byte smolcert + 16byte MAC + padding%16 (1-15byte)
-    //prepend number of appended bytes(prepended byte not included)
-    //encrypt identity inplace?
-
+    
+    noise_buffer_set_inout(buff,clientCert->msgBuf,clientCert->msgLen-16,clientCert->msgLen);
+    
     NOISE_ERROR_CHECK(noise_symmetricstate_encrypt_and_hash(symmState,&buff));
-    printHex(clientCert->msgBuf,clientCert->msgLen);
 
     packet->encryptedIdentityLen = clientCert->msgLen;
     packet->encryptedIdentity = (uint8_t*)malloc(packet->encryptedIdentityLen);
@@ -273,9 +265,7 @@ sc_err_t writeMessageDHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPa
     remoteStaticKeypair = noise_handshakestate_get_remote_public_key_dh(handshakeState); 
     localEphemeralKeypair = handshakeState->dh_local_ephemeral;
    
-    printf("Calc DH state\n");
     NOISE_ERROR_CHECK(noise_dhstate_calculate(localEphemeralKeypair,remoteStaticKeypair,DHresult,DHresultSize));
-    printf("Mix symmstate\n");
     NOISE_ERROR_CHECK(noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize));
     
 
@@ -291,14 +281,6 @@ sc_err_t writeMessageS_DHSE(NoiseHandshakeState *handshakeState, sc_handshakeFin
     SC_ERROR_CHECK(writeMessageS(handshakeState, packet,clientCert));
     SC_ERROR_CHECK(writeMessageDHSE(handshakeState, packet));
     
-
-    //TODO: encrypt identity and payload
-    //TODO: Provide access to local identity here [x]
-    /*packet->encryptedIdentity = NULL;
-    packet->encryptedIdentityLen = 0;
-    packet->encryptedPayload = NULL;
-    packet->encryptedPayloadLen = 0;
-    */
     return SC_OK;
 }
 
@@ -345,6 +327,7 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
 
    NoiseSymmetricState *symmState = handshakeState->symmetric;
    NoiseBuffer idBuffer;
+    sn_buffer_t smolCertBuffer;
     
    
    noise_buffer_init(idBuffer);
@@ -353,13 +336,10 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
    NOISE_ERROR_CHECK(noise_symmetricstate_decrypt_and_hash(symmState,&idBuffer));
    
 
-    uint8_t paddedBytes = packet->smolcert[0];
-    uint8_t smolCertEnd = packet->smolcertLen - 16 - paddedBytes;
-    //printf("Padded bytes: %d\n",paddedBytes);
-    packet->smolcert+= 1;
-    packet->smolcert[smolCertEnd] = '\0';  
-    //TODO: write pad and unpad function for certBuffer
-    SC_ERROR_CHECK(unpadBuffer((sn_buffer_t*)packet));
+    smolCertBuffer.msgBuf=packet->smolcert;
+    smolCertBuffer.msgLen=packet->smolcertLen;
+    SC_ERROR_CHECK(unpadBuffer(&smolCertBuffer));
+    packet->smolcertLen = smolCertBuffer.msgLen;
    
 
     SC_ERROR_CHECK(sc_parse_certificate(packet->smolcert,packet->smolcertLen, &remoteCert));
