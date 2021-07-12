@@ -102,7 +102,7 @@ sc_err_t sc_init(   sn_buffer_t *clientCert,
     //TODO: Implement platform agnostic Taskstarter
     taskData->addr = (char*)malloc(strlen(addr));
     strcpy(taskData->addr,addr);
-    taskData->port = port;
+    taskData->port = port; 
     taskData->clientCert = clientCert;
     taskData->rootCert = rootCert;
     taskData->certCallback = certCallback;
@@ -359,7 +359,7 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
     packet->smolcert+= 1;
     packet->smolcert[smolCertEnd] = '\0';  
     //TODO: write pad and unpad function for certBuffer
-
+    SC_ERROR_CHECK(unpadBuffer((sn_buffer_t*)packet));
    
 
     SC_ERROR_CHECK(sc_parse_certificate(packet->smolcert,packet->smolcertLen, &remoteCert));
@@ -443,5 +443,13 @@ sc_err_t padBuffer(sn_buffer_t* buffer){
     return SC_OK;
 }
 sc_err_t unpadBuffer(sn_buffer_t* buffer){
+    uint8_t bufferLen = buffer->msgLen;
+    uint8_t paddedBytes = buffer->msgBuf[0];
+     for(uint8_t idx = 0;idx<bufferLen-16;idx++){
+        buffer->msgBuf[idx] = buffer->msgBuf[idx+1];
+    }
+    buffer->msgBuf[bufferLen-16] = '\0';
+
+
     return SC_OK;
 }
