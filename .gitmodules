@@ -9,5 +9,5 @@
 	url = https://github.com/intel/tinycbor
 [submodule "libs/noise-c"]
 	path = libs/noise-c
-	url = https://github.com/rweather/noise-c
+	url = https://github.com/connctd/noise-c.git
 	ignore = untracked

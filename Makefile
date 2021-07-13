@@ -25,11 +25,13 @@ else
 	CLEANUP_DIR = rm -rf
 	MKDIR = mkdir -p
 	TARGET_EXTENSION=.out
+	THREADLIB = pthread
 endif
 
 COMPILE=gcc
 
-CFLAGS = -std=c99
+CFLAGS = -std=gnu99
+CFLAGS += -g 
 #CFLAGS += -Wall
 CFLAGS += -Wextra
 CFLAGS += -Werror 
@@ -37,7 +39,7 @@ CFLAGS += -Wpointer-arith
 CFLAGS += -Wcast-align
 CFLAGS += -Wwrite-strings
 #CFLAGS += -Wswitch-default
-CFLAGS += -Wunreachable-code
+#CFLAGS += -Wunreachable-code
 CFLAGS += -Winit-self
 CFLAGS += -Wmissing-field-initializers
 CFLAGS += -Wno-unknown-pragmas
@@ -47,15 +49,17 @@ CFLAGS += -Wold-style-definition
 CFLAGS += -Wmissing-prototypes
 CFLAGS += -Wmissing-declarations
 CFLAGS += -DUNITY_FIXTURES
-
-#CFLAGS += -Wno-unused-parameter
+CFLAGS += -Wno-unused-parameter
+CFLAGS += -Wno-enum-conversion
+CFLAGS += -Wno-empty-body
+CFLAGS += -Wno-cast-align
 
 #####################################################
 # PATHS
 #####################################################
 
 # libraries
-APP_LIBRARIES = sodium noiseprotocol
+APP_LIBRARIES = sodium noiseprotocol $(THREADLIB)
 
 #unity
 PATH_UNITY_ROOT=libs/Unity/
@@ -65,7 +69,7 @@ PATH_NOISE_ROOT=libs/noise-c/
 
 #app
 PATH_APP_SRC = $(COMPONENT_SRCDIRS)
-PATH_APP_INC = $(COMPONENT_ADD_INCLUDEDIRS) $(COMPONENT_PRIV_INCLUDEDIRS) $(PATH_NOISE_ROOT)build/include/ 
+PATH_APP_INC = $(COMPONENT_ADD_INCLUDEDIRS) $(COMPONENT_PRIV_INCLUDEDIRS) $(PATH_NOISE_ROOT)build/include/ $(PATH_NOISE_ROOT)src/protocol libs/smolcert-esp32/include/
         
 #tests
 PATH_TEST_SRC = tests/
@@ -94,7 +98,8 @@ SOURCE_TEST = $(wildcard $(PATH_TEST_SRC)*.c)
 SOURCE_TEST_RUNNERS = $(wildcard $(PATH_TEST_RUNNERS)*.c)
 SOURCE_APP = $(foreach src_dir, $(PATH_APP_SRC), $(wildcard $(src_dir)/*.c)) #$(wildcard $(scr_dir)/*.c)
 APP_INC_DIRS = $(foreach inc_dir, $(PATH_APP_INC), -I$(inc_dir))
-LIBRARY_FLAGS = -L$(PATH_NOISE_ROOT)build/lib/ $(foreach lib, $(APP_LIBRARIES), -l$(lib))
+LIBRARY_FLAGS = $(foreach lib, $(LIBRARY_PATHS), -L$(lib))
+LIBRARY_FLAGS += -L$(PATH_NOISE_ROOT)build/lib/ $(foreach lib, $(APP_LIBRARIES), -l$(lib))
 
 #####################################################
 # RESULTS 
@@ -110,7 +115,8 @@ SRC_FILES1=\
   $(SOURCE_TEST) \
   $(SOURCE_TEST_RUNNERS)
 
-INC_DIRS= -I$(PATH_UNITY_ROOT)src \
+INC_DIRS = $(foreach inc_dir, $(INCLUDE_DIRS), -I$(inc_dir))
+INC_DIRS += -I$(PATH_UNITY_ROOT)src \
 	-I$(PATH_UNITY_ROOT)extras/fixture/src \
 	-I$(PATH_UNITY_ROOT)extras/memory/src \
 	$(APP_INC_DIRS)
@@ -139,7 +145,7 @@ $(PATH_BUILD_DEPENDS):
 
 $(RESULTS_TEST):
 	$(COMPILE) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) -g $(SRC_FILES1) $(LIBRARY_FLAGS) -o $(TARGET1)
-	./$(TARGET1) -v > $@ 2>&1
+	./$(TARGET1) -v   # > $@ 2>&1
 
 .PHONEY:print
 print:
@@ -159,7 +165,7 @@ clean:
 
 noise-config:
 	$(MKDIR) $(PATH_NOISE_ROOT)build
-	cd $(PATH_NOISE_ROOT) && autoreconf -i && ./configure --prefix=$(CURDIR)/$(PATH_NOISE_ROOT)build --with-libsodium
+	cd $(PATH_NOISE_ROOT) && autoreconf -i && PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) ./configure --prefix=$(CURDIR)/$(PATH_NOISE_ROOT)build --without-libsodium --without-openssl CC=$(CC)
 noise-install: noise-config
 	cd $(PATH_NOISE_ROOT) && make install
 noise-clean:
