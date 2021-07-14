@@ -1,4 +1,5 @@
 #include "handshake.h"
+#include "transport.h"
 
 #include <inttypes.h>
 #include <string.h>
@@ -11,6 +12,7 @@
 #include "port.h"
 #include "sc_packet.h"
 #include "sn_msg.h"
+
 
 
 typedef enum{INIT_NETWORK,SEND_INIT,WAIT_FOR_RES,SEND_FIN,DO_TRANSPORT,ERROR} handshakeSteps;
@@ -26,6 +28,7 @@ typedef struct {
     NoiseHandshakeState* handshake;
 } task_data_t;
 
+NoiseCipherState *txCipher=NULL;
 
 //Internal functions
 sc_err_t writeMessageE(NoiseHandshakeState *handshakeState,sc_handshakeInitPacket* packet);
@@ -40,6 +43,8 @@ sc_err_t readMessageDHEE(NoiseHandshakeState *handshakeState, sc_handshakeRespon
 sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponsePacket *packet);
 sc_err_t readMessageDHES(NoiseHandshakeState *handshakeState, sc_handshakeResponsePacket *packet);
 
+sc_err_t splitCipher(NoiseHandshakeState *handshakeState,NoiseCipherState *rxCipher);
+
 void* runnerTask(void* arg);
 
 
@@ -49,12 +54,9 @@ void printCryptoData(NoiseHandshakeState *handshakeState);
 
 //Error Utils
 sc_err_t printNoiseErr(int);
-#define NOISE_ERROR_CHECK(error) \
-    if(printNoiseErr(error) != SC_OK) return SC_ERR;
 
-//Padding
-sc_err_t padBuffer(sn_buffer_t*);
-sc_err_t unpadBuffer(sn_buffer_t*);
+
+
 
 /**
  * Since we know this implementation is fully based on the krach-protocol and is only used as
@@ -127,10 +129,11 @@ void* runnerTask(void* arg){
 
     handshakeSteps currentStep = INIT_NETWORK;
     NoiseHandshakeState *handshakeState = taskData->handshake;
+    NoiseCipherState *rxCipher=NULL;
 
-    sc_handshakeInitPacket     initPaket={0};
-    sc_handshakeResponsePacket responsePaket={0};
-    sc_handshakeFinPacket      finPaket={0};
+    sc_handshakeInitPacket      initPaket={0};
+    sc_handshakeResponsePacket  responsePaket={0};
+    sc_handshakeFinPacket       finPaket={0};
 
     sn_msg_t networkMsg = {0};
     printf("Starting main loop\n");
@@ -172,6 +175,7 @@ void* runnerTask(void* arg){
                 printf("State: SEND FINISH\n");
 
                 STATE_ERROR_CHECK(writeMessageS_DHSE(handshakeState, &finPaket, taskData->clientCert));
+                STATE_ERROR_CHECK(splitCipher(handshakeState,rxCipher));
 
                 finPaket.HandshakeType = HANDSHAKE_FIN;
                 STATE_ERROR_CHECK(packHandshakeFin(&finPaket,&networkMsg));
@@ -182,15 +186,13 @@ void* runnerTask(void* arg){
              
             case DO_TRANSPORT:
                 printf("State: DO TRANSPORT\n");
-                //if(messageFromNetwork)
-                //unpackTransport
-                //decrypt
-                //putInRxQueue
-                //
-                //if(messageInLocalTxQueue)
-                //encrypt
-                //packTransport
-                //sendOverNetwork
+                if(messageFromNetwork(&networkMsg)){
+                    //STATE_ERROR_CHECK(unpackTransport(&rxPaket,&networkMsg));
+                    //TransportPakets dont need to be unpacked, since its format is same as networkmessage
+                    STATE_ERROR_CHECK(decryptTransport(rxCipher, &networkMsg));
+                    taskData->transportCallback(networkMsg.msgBuf,networkMsg.msgLen);
+                 }
+
             break;    
 
             case ERROR: 
@@ -266,12 +268,6 @@ sc_err_t writeMessageDHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPa
    
     NOISE_ERROR_CHECK(noise_dhstate_calculate(localEphemeralKeypair,remoteStaticKeypair,DHresult,DHresultSize));
     NOISE_ERROR_CHECK(noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize));
-    
-
-    //split symmetric state for encrypt(first cipher) and decrypt(second cipher)
-    //see: http://rweather.github.io/noise-c/group__symmetricstate.html#gadf7cef60a64aef703add9b093c3b6c63
-    NOISE_ERROR_CHECK(noise_symmetricstate_split(symmState,&sendCipher,&receiveCipher));
-    //NOTE: possibly noise-c handles this for itself
 
     return SC_OK;
 }
@@ -390,22 +386,16 @@ sc_err_t printNoiseErr(int noiseErr){
 }
 
 
-sc_err_t padBuffer(sn_buffer_t* buffer){
-    uint8_t bufferLen = buffer->msgLen;
-    uint8_t paddedBytes = (16-((bufferLen+16+1)%16));
-    uint8_t newLen = paddedBytes+bufferLen+16+1;
-    buffer->msgBuf = realloc(buffer->msgBuf,newLen);
 
-    if(buffer->msgBuf == NULL) return SC_ERR;
-    buffer->msgLen = newLen;
+void printCryptoData(NoiseHandshakeState *handshakeState){
+    NoiseCipherState* cipher = handshakeState->symmetric->cipher;
+    NoiseHashState* hash = handshakeState->symmetric->hash;
+}
 
-    for(uint8_t idx = bufferLen+1;idx>0;idx--){
-        buffer->msgBuf[idx] = buffer->msgBuf[idx-1];
-    }
-    buffer->msgBuf[0]=paddedBytes;    
+sc_err_t sendTransport(sn_buffer_t txData);
+sc_err_t sendTransport(sn_buffer_t txData){
 
 
-    return SC_OK;
 }
 sc_err_t unpadBuffer(sn_buffer_t* buffer){
     uint8_t bufferLen = buffer->msgLen;

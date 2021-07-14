@@ -189,11 +189,6 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
 
 }
 
-sc_err_t unpackTransport(sc_transportPacket* packet,  sn_msg_t *msg){
-    uint16_t packetLen;
-    return SC_OK;
-}
-sc_err_t packTransport(sc_transportPacket* packet, sn_msg_t *msg){
-    uint16_t packetLen;
-    return SC_OK;
-}
+
+
+

@@ -66,19 +66,6 @@ sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg);
 sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet ,sn_msg_t *msg);
 
 /**
- * Function: packTransport
- * -----------------
- * Packs transport message for network transport, handles memory allocation for itself
- * 
- *  packet:       pointer to prefilled transport struct  
- *  msgBuffer:    pointer to uint8 array which is allocated in this function
- *  msgLen:       contains the length of msgBuffer
- *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
- * */
-sc_err_t packTransport(sc_transportPacket* packet, sn_msg_t *msg);
-
-
-/**
  * Function: unpackHandshakeResponse
  * -----------------
  * Unpacks handshakeResponse from network transport, handles memory allocation for itself, stores results in struct
@@ -91,17 +78,6 @@ sc_err_t packTransport(sc_transportPacket* packet, sn_msg_t *msg);
 sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet, sn_msg_t *msg);
 
 
-/**
- * Function: unpackTransport
- * -----------------
- * Unpacks transport packet from network transport, handles memory allocation for itself, stores results in struct
- * 
- *  packet:       pointer to transport struct
- *  msgBuffer:    pointer to uint8 array from network
- *  msgLen:       contains the length of msgBuffer
- *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
- * */
-sc_err_t unpackTransport(sc_transportPacket* packet, sn_msg_t *msg);
 
 /**
  * Function: readUint16
@@ -131,8 +107,6 @@ void writeUint16(uint8_t* buf, uint16_t val);
 sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t** dst, uint16_t *dstlen);
 
 sc_err_t writeLVBlock(uint8_t *buf, uint16_t bufLen, uint8_t *data, uint16_t dataLen, uint16_t *outLen);
-
-
 
 
 

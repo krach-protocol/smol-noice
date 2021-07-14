@@ -67,7 +67,8 @@ void test_readWriteUint16(void) {
   TEST_ASSERT_EQUAL_MESSAGE(2025, i, "Failed to read little endian integer from byte array");
 
   uint8_t testBuf[2];
-  writeUint16((uint8_t*)&testBuf, 2025);
+  uint8_t *testPtr = testBuf;
+  writeUint16(testBuf, 2025);
   TEST_ASSERT_EQUAL_MESSAGE(0xE9, testBuf[0], "Lower byte of uint16 does not match");
   TEST_ASSERT_EQUAL_MESSAGE(0x07, testBuf[1], "Upper byte of uint16 does not match");
 }
