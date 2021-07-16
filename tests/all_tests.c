@@ -24,6 +24,9 @@ void test_readWriteUint16(void);
 void test_readLVBlock(void);
 void test_writeLVBlock(void);
 void test_NoiseName(void);
+void test_smolNoice(void);
+
+sc_err_t testTransportCallBack(uint8_t*, uint8_t);
 
 sc_error_t loadSmolCert(const char*,smolcert_t**,sn_buffer_t*);
 
@@ -209,14 +212,65 @@ void test_makeNoiseHandshake(void){
   sn_buffer_t rootCertBuffer;
   err =  loadSmolCert(certFilePath,&clientCert,&clientCertBuffer);
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
-  if(err == Sc_No_Error){
-    sc_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
+  if(err != Sc_No_Error){
+    //sc_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
   }else{
     printf("Error initialzing cert");
   }
 
   while(1);
     printf("End");
+}
+
+
+sc_err_t testTransportCallBack(uint8_t* data, uint8_t dataLen){
+  printf("TRANSPORT: Got Data with length %d \n",dataLen);
+
+  return SC_OK;
+}
+
+void test_smolNoice(void){
+  smolcert_t *clientCert = (smolcert_t*)malloc(sizeof(smolcert_t));
+  sc_error_t err = SC_OK;
+  sn_buffer_t clientCertBuffer;
+  smolNoice_t* smolNoiceTest;
+  char certFilePath[CWD_BUF_SIZE];
+  
+  getcwd(certFilePath, CWD_BUF_SIZE);
+  strcat(certFilePath,CERT_PATH);
+  
+  err =  loadSmolCert(certFilePath,&clientCert,&clientCertBuffer);
+  TEST_ASSERT_EQUAL(err , Sc_No_Error);
+  
+  
+  if(err != Sc_No_Error) return;
+
+  smolNoiceTest = smolNoice();
+  if(smolNoiceTest == NULL) return; 
+
+  err = smolNoiceSetHost(smolNoiceTest,"127.0.0.1",9095);
+  if(err != Sc_No_Error) return;
+
+  err = smolNoiceSetClientCert(smolNoiceTest,clientCertBuffer.msgBuf,clientCertBuffer.msgLen);
+  if(err != Sc_No_Error) return;
+
+  //err = smolNoiceSetTransportCallback(smolNoiceTest,testTransportCallBack);
+  //if(err != Sc_No_Error) return;
+  
+  err = smolNoiceStart(smolNoiceTest);
+printf("Starting handshake... \n");
+
+ while(smolNoiceReadyForTransport(smolNoiceTest) != SC_OK){};
+printf("Ready for Transport... \n");
+
+  char testPayload[] = "ping";
+  while(1){
+    if(smolNoiceSendData(smolNoiceTest,strlen(testPayload),(uint8_t*)testPayload) != SC_OK){
+      printf("Error sending data\n");
+    } 
+  }
+    printf("End");
+
 }
 
 int main(void) {
@@ -232,7 +286,8 @@ int main(void) {
     RUN_TEST(test_unpackHandshakeResponse);
     RUN_TEST(test_NoiseName);
     //RUN_TEST(test_packHandshakeFin);
-    RUN_TEST(test_makeNoiseHandshake);
+    //RUN_TEST(test_makeNoiseHandshake);
+    RUN_TEST(test_smolNoice);
     
 
     return UNITY_END();

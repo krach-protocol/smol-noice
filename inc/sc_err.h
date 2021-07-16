@@ -11,7 +11,7 @@ typedef enum errorType {SC_OK=0,SC_ERR=1,SC_PAKET_ERR} sc_err_t;
 
 #define STATE_ERROR_CHECK(error) \
     if(error != SC_OK){ \
-        currentStep = ERROR; \
+         taskData->handShakeStep = ERROR; \
         continue; \
     } 
 sc_err_t printNoiseErr(int);

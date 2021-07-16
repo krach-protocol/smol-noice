@@ -6,7 +6,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h> 
 
-#include <pthread.h> 
 #include <errno.h>
 
 
@@ -14,6 +13,7 @@
 
 #include "sn_msg.h"
 #include "../queue.h"
+#include "smol-noice-internal.h"
 
 #include <time.h>
 //int nanosleep(const struct timespec *req, struct timespec *rem);
@@ -21,9 +21,6 @@
 
 #define QUEUE_LEN 10
 #define RX_BUFLEN 255
-queue_t *rxQueue;
-int sock;
-pthread_mutex_t lock;
 
 
 
@@ -34,40 +31,41 @@ void startTask(void* (*workerTask)(void*),void* args){
     pthread_create(&tid, NULL, workerTask, args);
 }
 
-uint8_t openSocket(char* addr,uint16_t port){
+uint8_t openSocket(smolNoice_t *smolNoice){
     struct sockaddr_in serv_addr; 
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+    if ((smolNoice->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         printf("ERROR");
         return 1;	 
     }    
 	
     serv_addr.sin_family = AF_INET; 
-	serv_addr.sin_port = htons(port);
+	serv_addr.sin_port = htons(smolNoice->hostPort);
 	
-    if(inet_pton(AF_INET, addr, &serv_addr.sin_addr)<=0) {
+    if(inet_pton(AF_INET, smolNoice->hostAddress, &serv_addr.sin_addr)<=0) {
         printf("ERROR");
         return 1; 
     }
    
-    printf("Connecting to: %s:%d\n",addr,port);
-   if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    printf("Connecting to: %s:%d\n",smolNoice->hostAddress,smolNoice->hostPort);
+   if(connect(smolNoice->socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
        printf("Error : Connect Failed \n");
        return 1;
     } 
 
-    if((rxQueue = initQueue(QUEUE_LEN)) == NULL){
+    if((smolNoice->rxQueue = initQueue(QUEUE_LEN)) == NULL){
        printf(" Error : Init Queue Failed \n");   
     }
     
+    smolNoice->rxQueueLock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 
-    pthread_mutex_init(&lock, NULL);
-    startTask(socketListenerTask,(void*)rxQueue);    
+    pthread_mutex_init(smolNoice->rxQueueLock, NULL);
+    startTask(socketListenerTask,(void*)smolNoice);    
     return 0;
 }
 
 void* socketListenerTask(void* args){
-    queue_t* rxQueue = (queue_t*)args;
+    smolNoice_t* smolNoice = (smolNoice_t*)args;
     uint8_t bytesRead = 0;
     uint8_t rxBuffer[RX_BUFLEN];
     int16_t readResult  = 0;
@@ -75,7 +73,7 @@ void* socketListenerTask(void* args){
     int16_t errsv;
     while(1){
         sleep_ms(100);
-         readResult = recv(sock, rxBuffer + bytesRead, RX_BUFLEN - bytesRead,MSG_DONTWAIT);
+         readResult = recv(smolNoice->socket, rxBuffer + bytesRead, RX_BUFLEN - bytesRead,MSG_DONTWAIT);
          if(readResult < 0){
             errsv = errno;
             //printf("Error on socket: %s\n",strerror(errno));
@@ -86,26 +84,26 @@ void* socketListenerTask(void* args){
              rxMsg->msgLen = bytesRead;
              rxMsg->msgBuf = (uint8_t*)malloc(rxMsg->msgLen);
              memcpy(rxMsg->msgBuf,rxBuffer,rxMsg->msgLen);
-            pthread_mutex_lock(&lock);
-             addToQueue(rxQueue,rxMsg);
-              pthread_mutex_unlock(&lock);
+            pthread_mutex_lock(smolNoice->rxQueueLock);
+             addToQueue(smolNoice->rxQueue,rxMsg);
+              pthread_mutex_unlock(smolNoice->rxQueueLock);
              bytesRead = 0;
          } 
     } 
 }
 
-void sendOverNetwork(sn_msg_t* msg){
+void sendOverNetwork(smolNoice_t *smolNoice,sn_msg_t* msg){
     size_t sentBytes = 0;
-    sentBytes = send(sock , msg->msgBuf , msg->msgLen , 0 ); 
+    sentBytes = send(smolNoice->socket, msg->msgBuf , msg->msgLen , 0 ); 
 }
 
-uint8_t messageFromNetwork(sn_msg_t* msg){
+uint8_t messageFromNetwork(smolNoice_t* smolNoice,sn_msg_t* msg){
     sn_msg_t* data = NULL;
     uint8_t ret = 0;
-    pthread_mutex_lock(&lock);
+    pthread_mutex_lock(smolNoice->rxQueueLock);
 
-    if(messageInQueue(rxQueue) == DATA_AVAILIBLE){
-        getMessageFromQueue(rxQueue,&data); //TODO: Error handling
+    if(messageInQueue(smolNoice->rxQueue) == DATA_AVAILIBLE){
+        getMessageFromQueue(smolNoice->rxQueue,&data); //TODO: Error handling
         msg->msgLen = data->msgLen;
         free(msg->msgBuf);
 
@@ -115,7 +113,7 @@ uint8_t messageFromNetwork(sn_msg_t* msg){
         //free(data);
         ret = 1;
     }
-     pthread_mutex_unlock(&lock);
+     pthread_mutex_unlock(smolNoice->rxQueueLock);
 
     return ret;
 }
