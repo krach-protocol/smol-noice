@@ -48,7 +48,7 @@ sc_error_t loadSmolCert(const char*,smolcert_t**,sn_buffer_t*);
 #define RESPONSE_PACKET_TYPE HANDSHAKE_RESPONSE
 
 void test_NoiseName(void) {
-  NoiseProtocolId *krach = (NoiseProtocolId*)malloc(sizeof(NoiseProtocolId));
+  NoiseProtocolId *krach = (NoiseProtocolId*)calloc(1,sizeof(NoiseProtocolId));
 
   krach->cipher_id = NOISE_CIPHER_CHACHAPOLY;
   krach->dh_id = NOISE_DH_CURVE25519;
@@ -116,7 +116,7 @@ void test_unpackHandshakeResponse(void){
                                   0xA7 ,0xB8 ,0xA5 ,0x65 ,0x5C ,0xB3 ,0x85 ,0x1C , \
                                   0x74 ,0x4A ,0xFD ,0x69 ,0xEC ,0x95 ,0x9E ,0x29};
 
-  testMsg.msgBuf = (uint8_t*)malloc((size_t)totalLen+3);
+  testMsg.msgBuf = (uint8_t*)calloc(1,(size_t)totalLen+3);
   testMsg.msgLen = totalLen+2;
   testMsg.msgBuf[0] = RESPONSE_PACKET_TYPE;
   testMsg.msgBuf[1] = totalLen&0xFF;
