@@ -1,4 +1,5 @@
 .vscode
+report.xml
 build/*
 tests/krach-test-helper/*.key
 tests/krach-test-helper/*.smolcert
