@@ -172,5 +172,6 @@ noise-clean:
 	cd $(PATH_NOISE_ROOT) && make distclean
 
 memcheck:
+	clear
 	$(COMPILE) $(CFLAGS) $(INC_DIRS) $(SYMBOLS) -g $(SRC_FILES1) $(LIBRARY_FLAGS) -o $(TARGET1)
-	valgrind --leak-check=yes $(TARGET1)
+	valgrind --leak-check=yes --track-origins=yes $(TARGET1)

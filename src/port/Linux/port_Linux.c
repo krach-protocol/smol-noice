@@ -72,21 +72,21 @@ void* socketListenerTask(void* args){
     sn_msg_t* rxMsg;
     int16_t errsv;
     while(1){
-        sleep_ms(100);
+        sleep_ms(10);
          readResult = recv(smolNoice->socket, rxBuffer + bytesRead, RX_BUFLEN - bytesRead,MSG_DONTWAIT);
          if(readResult < 0){
             errsv = errno;
-            //printf("Error on socket: %s\n",strerror(errno));
+            if(errno == 104){
+                printf("Error on socket: %s\n",strerror(errno));
+                smolNoice->handShakeStep = ERROR;
+            }
          } else if(readResult > 0){
              bytesRead += readResult;
-             //Rx complete
-             rxMsg = (sn_msg_t*)malloc(sizeof(sn_msg_t));
-             rxMsg->msgLen = bytesRead;
-             rxMsg->msgBuf = (uint8_t*)malloc(rxMsg->msgLen);
-             memcpy(rxMsg->msgBuf,rxBuffer,rxMsg->msgLen);
+             
             pthread_mutex_lock(smolNoice->rxQueueLock);
-             addToQueue(smolNoice->rxQueue,rxMsg);
-              pthread_mutex_unlock(smolNoice->rxQueueLock);
+            addToQueue(smolNoice->rxQueue,rxBuffer,bytesRead);
+            pthread_mutex_unlock(smolNoice->rxQueueLock);
+             
              bytesRead = 0;
          } 
     } 
@@ -95,6 +95,7 @@ void* socketListenerTask(void* args){
 void sendOverNetwork(smolNoice_t *smolNoice,sn_msg_t* msg){
     size_t sentBytes = 0;
     sentBytes = send(smolNoice->socket, msg->msgBuf , msg->msgLen , 0 ); 
+    free(msg->msgBuf);
 }
 
 uint8_t messageFromNetwork(smolNoice_t* smolNoice,sn_msg_t* msg){
@@ -105,12 +106,12 @@ uint8_t messageFromNetwork(smolNoice_t* smolNoice,sn_msg_t* msg){
     if(messageInQueue(smolNoice->rxQueue) == DATA_AVAILIBLE){
         getMessageFromQueue(smolNoice->rxQueue,&data); //TODO: Error handling
         msg->msgLen = data->msgLen;
-        free(msg->msgBuf);
 
-        msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
+        msg->msgBuf = (uint8_t*)calloc(1,msg->msgLen);
         memcpy(msg->msgBuf,data->msgBuf,msg->msgLen);
 
-        //free(data);
+        free(data->msgBuf);
+        free(data);
         ret = 1;
     }
      pthread_mutex_unlock(smolNoice->rxQueueLock);
@@ -120,10 +121,10 @@ uint8_t messageFromNetwork(smolNoice_t* smolNoice,sn_msg_t* msg){
 
  void sleep_ms(uint16_t waitms){
    
-    struct timespec ts,rem;
+    struct timespec ts={0},rem;
     ts.tv_sec = 0;
     ts.tv_nsec = waitms* 1000000L;
-    nanosleep(&ts, &rem);
+    nanosleep(&ts, NULL);
    
  
  }

@@ -4,6 +4,8 @@
 #include "smol-noice.h"
 
 
+void printHex(uint8_t*,uint8_t);
+
 void startTask(void* (void*),void*);
 
 uint8_t openSocket(smolNoice_t*);

@@ -1,6 +1,9 @@
 #include "handshake.h"
 #include "transport.h"
 
+#include <sodium.h>
+
+
 #include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
@@ -13,20 +16,12 @@
 
 #include "smol-noice-internal.h"
 
-
-
-void printHex(uint8_t*,uint8_t);
-
-
-//Error Utils
-
-
-
+#define PUBKEY_LEN 32
 
 /**
  * Since we know this implementation is fully based on the krach-protocol and is only used as
  * a client-implementation we can skip a lot of checks from the echo-tutorial (http://rweather.github.io/noise-c/example_echo.html)
- * 
+ * f
  *  Nice function for all sanity checks: noise_handshakestate_get_action 
  *  http://rweather.github.io/noise-c/group__symmetricstate.html
  * 
@@ -37,23 +32,17 @@ void printHex(uint8_t*,uint8_t);
 sc_err_t writeMessageE(smolNoice_t* smolNoice,sc_handshakeInitPacket* packet){
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
     NoiseDHState *dhState;   
-    size_t pubKeyLen;
-    uint8_t* pubKey;
-    int noiseErr = 0;
-    char errBuf[32];
+    uint8_t pubKey[PUBKEY_LEN];
 
     dhState = smolNoice->handshakeState->dh_local_ephemeral;
-    pubKeyLen = noise_dhstate_get_public_key_length(dhState);
-    pubKey = (uint8_t*)malloc(pubKeyLen);
     
-    NOISE_ERROR_CHECK(noise_dhstate_get_public_key(dhState,pubKey,pubKeyLen));
+    NOISE_ERROR_CHECK(noise_dhstate_get_public_key(dhState,pubKey,PUBKEY_LEN));
     
-    packet->ephemeralPubKey = (uint8_t*)malloc(pubKeyLen);
-    memcpy(packet->ephemeralPubKey,pubKey,pubKeyLen);
+    packet->ephemeralPubKey = (uint8_t*)calloc(PUBKEY_LEN,sizeof(uint8_t));
+    memcpy(packet->ephemeralPubKey,pubKey,PUBKEY_LEN);
 
-    NOISE_ERROR_CHECK(noise_symmetricstate_mix_hash(symmState,pubKey,pubKeyLen));
+    NOISE_ERROR_CHECK(noise_symmetricstate_mix_hash(symmState,pubKey,PUBKEY_LEN));
 
-    free(pubKey);
    	return SC_OK;
 }
 
@@ -61,22 +50,23 @@ sc_err_t writeMessageS(smolNoice_t* smolNoice, sc_handshakeFinPacket* packet){
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
     NoiseBuffer buff;
     noise_buffer_init(buff);
-    int noiseErr = 0;
-    char errBuf[32];
     sn_buffer_t certBuffer;
 
     certBuffer.msgLen = smolNoice->clientCertLen;
-    certBuffer.msgBuf = (uint8_t*)malloc(certBuffer.msgLen);
+    certBuffer.msgBuf = (uint8_t*)calloc(certBuffer.msgLen,sizeof(uint8_t));
     memcpy(certBuffer.msgBuf,smolNoice->clientCert,certBuffer.msgLen);
 
     SC_ERROR_CHECK(padBuffer(&certBuffer));
     
     noise_buffer_set_inout(buff,certBuffer.msgBuf,certBuffer.msgLen-16,certBuffer.msgLen);
     
-    NOISE_ERROR_CHECK(noise_symmetricstate_encrypt_and_hash(symmState,&buff));
 
+    
+    NOISE_ERROR_CHECK(noise_symmetricstate_encrypt_and_hash(symmState,&buff));
+    
+   
     packet->encryptedIdentityLen = certBuffer.msgLen;
-    packet->encryptedIdentity = (uint8_t*)malloc(packet->encryptedIdentityLen);
+    packet->encryptedIdentity = (uint8_t*)calloc(packet->encryptedIdentityLen,sizeof(uint8_t));
     memcpy(packet->encryptedIdentity,certBuffer.msgBuf,packet->encryptedIdentityLen);
 
     free(certBuffer.msgBuf);
@@ -87,18 +77,25 @@ sc_err_t writeMessageS(smolNoice_t* smolNoice, sc_handshakeFinPacket* packet){
 
 sc_err_t writeMessageDHSE(smolNoice_t* smolNoice, sc_handshakeFinPacket* packet){
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
-    NoiseDHState *remoteStaticKeypair, *localEphemeralKeypair;
+    NoiseDHState *localStaticKeyPair = smolNoice->handshakeState->dh_local_static;
+    NoiseDHState *remoteEphemeralKeyPair = smolNoice->handshakeState->dh_remote_ephemeral;
     NoiseCipherState *sendCipher, *receiveCipher;
     uint8_t DHresult[32];
+    uint8_t localPrivateStaticBufferCURVE25519[32];
     size_t DHresultSize = 32;
 
 
 
-    remoteStaticKeypair = noise_handshakestate_get_remote_public_key_dh(smolNoice->handshakeState); 
-    localEphemeralKeypair = smolNoice->handshakeState->dh_local_ephemeral;
-   
-    NOISE_ERROR_CHECK(noise_dhstate_calculate(localEphemeralKeypair,remoteStaticKeypair,DHresult,DHresultSize));
+    if(crypto_sign_ed25519_sk_to_curve25519(localPrivateStaticBufferCURVE25519,smolNoice->clientPrivateKey) != 0){
+        return SC_ERR;
+    }
+
+    NOISE_ERROR_CHECK(noise_dhstate_set_keypair_private(localStaticKeyPair,localPrivateStaticBufferCURVE25519,32) );
+
+
+    NOISE_ERROR_CHECK(noise_dhstate_calculate(localStaticKeyPair,remoteEphemeralKeyPair,DHresult,DHresultSize));
     NOISE_ERROR_CHECK(noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize));
+
 
     return SC_OK;
 }
@@ -121,6 +118,8 @@ sc_err_t readMessageE(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet
     NOISE_ERROR_CHECK(noise_dhstate_set_public_key(remoteEphemeralKeypair, packet->ephemeralPubKey, 32));
     NOISE_ERROR_CHECK(noise_symmetricstate_mix_hash(symmState,packet->ephemeralPubKey,32));
     
+    free(packet->ephemeralPubKey);
+
     return SC_OK;
 }
 
@@ -145,8 +144,6 @@ sc_err_t readMessageS(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet
 
     uint8_t* DHresult = NULL;
     size_t DHresultSize = 0;
-    int noiseErr = 0;
-    char errBuf[32];
 
    NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
    NoiseBuffer idBuffer;
@@ -169,7 +166,7 @@ sc_err_t readMessageS(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet
         return SC_ERR;
     }
     
-    //TODO implement callback for cert handling
+    SC_ERROR_CHECK(smolNoice->certCallback(packet->smolcert,packet->smolcertLen,&remoteCert));
     
     //TODO check why validation fails
     //if(sc_validate_certificate_signature(packet->smolcert, packet->smolcertLen, rootPubKey) != SC_OK) return SC_ERR;
@@ -248,9 +245,10 @@ sc_err_t splitCipher(smolNoice_t* smolNoice){
      //split symmetric state for encrypt(first cipher) and decrypt(second cipher)
     //see: http://rweather.github.io/noise-c/group__symmetricstate.html#gadf7cef60a64aef703add9b093c3b6c63
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
-    NOISE_ERROR_CHECK(noise_symmetricstate_split(symmState,&(smolNoice->rxCipher),&(smolNoice->txCipher)));
+
+    NOISE_ERROR_CHECK(noise_symmetricstate_split(symmState,&(smolNoice->txCipher),&(smolNoice->rxCipher)));
+
 
     NOISE_ERROR_CHECK(noise_handshakestate_free(smolNoice->handshakeState));
-    //NOTE: possibly noise-c handles this for itself
     return SC_OK;
 }

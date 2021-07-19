@@ -13,8 +13,10 @@
 #include "sc_packet.h"
 #include "sc_err.h"
 
+
 #define CWD_BUF_SIZE 128
 #define CERT_PATH "/tests/krach-test-helper/client.smolcert"
+#define KEY_PATH "/tests/krach-test-helper/client.key"
 
 void test_makeNoiseHandshake(void);
 void test_packHandshakeInit(void);
@@ -25,10 +27,14 @@ void test_readLVBlock(void);
 void test_writeLVBlock(void);
 void test_NoiseName(void);
 void test_smolNoice(void);
+void sleep_ms(uint16_t);
+
 
 sc_err_t testTransportCallBack(uint8_t*, uint8_t);
 
+
 sc_error_t loadSmolCert(const char*,smolcert_t**,sn_buffer_t*);
+sc_err_t loadPrivateKey(const char*,uint8_t*);
 
 #define DUMMY_PUBKEY 0x66 ,0x82 ,0x79 ,0x97 ,0x37 ,0xB7 ,0x6C ,0x17 , \
                       0xC3 ,0x5B ,0x95 ,0x57 ,0x44 ,0x9A ,0x86 ,0x22 , \
@@ -138,6 +144,9 @@ void test_unpackHandshakeResponse(void){
 
   TEST_ASSERT_EQUAL_MESSAGE(smolcertLen,testPacket.smolcertLen,"Wrong smolcert length // Failed to parse smolcert length");
   TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&(testMsg.msgBuf[37]),testPacket.smolcert,smolcertLen,"Failed to parse smolcert");
+
+  free(testPacket.ephemeralPubKey);
+  free(testMsg.msgBuf);
 }
 
 
@@ -167,7 +176,7 @@ void test_packHandshakeInit(void){
 
   //Build testpacket
   testPacket.HandshakeType = INIT_PACKET_TYPE;
-  testPacket.ephemeralPubKey = (uint8_t*)malloc(32);
+  testPacket.ephemeralPubKey = (uint8_t*)calloc(32,sizeof(uint8_t));
   memcpy(testPacket.ephemeralPubKey,testCert->public_key,32); 
 
   //Test if ephemeral-publickey was properly copied
@@ -181,7 +190,9 @@ void test_packHandshakeInit(void){
   TEST_ASSERT_EQUAL_MESSAGE(36,testMsg.msgLen,"Test packet length doesnt match");
   TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(handshakeTestVektor, testMsg.msgBuf,36,"Failed to pack handshake message");
 
-
+  free(testPacket.ephemeralPubKey);
+  free(testMsg.msgBuf);
+  free(testCert);
 }
 
 void test_packHandshakeFin(void) {
@@ -225,6 +236,9 @@ void test_makeNoiseHandshake(void){
 
 sc_err_t testTransportCallBack(uint8_t* data, uint8_t dataLen){
   printf("TRANSPORT: Got Data with length %d \n",dataLen);
+  
+  data[7] = '\0';
+    printf("%s\n",data);
 
   return SC_OK;
 }
@@ -234,15 +248,19 @@ void test_smolNoice(void){
   sc_error_t err = SC_OK;
   sn_buffer_t clientCertBuffer;
   smolNoice_t* smolNoiceTest;
+  uint8_t privateKeyBuffer[32];
   char certFilePath[CWD_BUF_SIZE];
-  
+  char keyFilePath[CWD_BUF_SIZE];
   getcwd(certFilePath, CWD_BUF_SIZE);
+  getcwd(keyFilePath, CWD_BUF_SIZE);
   strcat(certFilePath,CERT_PATH);
+  strcat(keyFilePath,KEY_PATH);
   
   err =  loadSmolCert(certFilePath,&clientCert,&clientCertBuffer);
+    
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
-  
-  
+
+  err = loadPrivateKey(keyFilePath,privateKeyBuffer);
   if(err != Sc_No_Error) return;
 
   smolNoiceTest = smolNoice();
@@ -254,8 +272,11 @@ void test_smolNoice(void){
   err = smolNoiceSetClientCert(smolNoiceTest,clientCertBuffer.msgBuf,clientCertBuffer.msgLen);
   if(err != Sc_No_Error) return;
 
-  //err = smolNoiceSetTransportCallback(smolNoiceTest,testTransportCallBack);
-  //if(err != Sc_No_Error) return;
+  err = smolNoiceSetClientPrivateKey(smolNoiceTest,privateKeyBuffer);
+  if(err != Sc_No_Error) return;
+
+  err = smolNoiceSetTransportCallback(smolNoiceTest,testTransportCallBack);
+  if(err != Sc_No_Error) return;
   
   err = smolNoiceStart(smolNoiceTest);
 printf("Starting handshake... \n");
@@ -263,14 +284,19 @@ printf("Starting handshake... \n");
  while(smolNoiceReadyForTransport(smolNoiceTest) != SC_OK){};
 printf("Ready for Transport... \n");
 
-  char testPayload[] = "ping";
-  while(1){
-    if(smolNoiceSendData(smolNoiceTest,strlen(testPayload),(uint8_t*)testPayload) != SC_OK){
-      printf("Error sending data\n");
-    } 
-  }
-    printf("End");
 
+   char testBuffer[32];
+   uint8_t i = 0;
+  while(1){
+    // sleep_ms(50);
+    usleep(50000);
+    sprintf(testBuffer,"ping %d", i++);
+    smolNoiceSendData(smolNoiceTest,strlen(testBuffer),(uint8_t*)testBuffer);
+
+  }
+  free(clientCertBuffer.msgBuf);
+    printf("End");
+  while(1);
 }
 
 int main(void) {
@@ -300,7 +326,6 @@ int main(void) {
 // Utility
 sc_error_t loadSmolCert(const char* fileName,smolcert_t** cert,sn_buffer_t* buffer){
   FILE *fp;
-  //uint8_t* buf;
   size_t bufSize;
   
   sc_error_t sc_err;
@@ -320,4 +345,17 @@ sc_error_t loadSmolCert(const char* fileName,smolcert_t** cert,sn_buffer_t* buff
 
   sc_err = sc_parse_certificate(buffer->msgBuf,buffer->msgLen, *cert);
   return sc_err;
+}
+
+sc_err_t loadPrivateKey(const char* fileName,uint8_t* privateKey){
+  FILE *fp;
+  fp = fopen(fileName,"rb");
+  
+  if(fp == NULL){
+    printf("File not found");
+    TEST_ABORT();
+  }
+  fread(privateKey,1,32,fp);
+
+  return SC_OK;
 }

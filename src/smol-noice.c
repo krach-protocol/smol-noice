@@ -11,12 +11,27 @@
 #include <string.h>
 #include <stdio.h>
 
+#define QUEUE_LEN 32
+
 sc_err_t defaultCertCallback(uint8_t*,uint8_t,smolcert_t*);
 
 smolNoice_t* smolNoice(void){
-    smolNoice_t *smolNoice = (smolNoice_t*)malloc(sizeof(smolNoice_s));
+    smolNoice_t *smolNoice = (smolNoice_t*)calloc(1,sizeof(smolNoice_s));
     smolNoice->certCallback = defaultCertCallback;
-    return  smolNoice;
+
+    if((smolNoice->rxQueue = initQueue(QUEUE_LEN)) == NULL){
+       printf(" Error : Init Queue Failed \n");   
+    }
+    smolNoice->rxQueueLock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(smolNoice->rxQueueLock, NULL);
+
+    if((smolNoice->txQueue = initQueue(QUEUE_LEN)) == NULL){
+       printf(" Error : Init Queue Failed \n");   
+    }
+    smolNoice->txQueueLock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(smolNoice->txQueueLock, NULL);
+
+    return smolNoice;
 }
 
 sc_err_t smolNoiceStart(smolNoice_t* smolNoice){
@@ -42,15 +57,19 @@ sc_err_t smolNoiceSetClientCert(smolNoice_t* smolNoice, uint8_t* clientCert, uin
     return SC_OK;
 }
 
+sc_err_t smolNoiceSetClientPrivateKey(smolNoice_t* smolNoice,uint8_t* privateKey){
+    memcpy(smolNoice->clientPrivateKey,privateKey,32);
+
+    return SC_OK;
+}
+
 sc_err_t smolNoiceSendData(smolNoice_t* smolNoice,uint8_t dataLen,uint8_t* data){
-    sn_msg_t txBuffer;
     if(smolNoice->handShakeStep != DO_TRANSPORT) return SC_ERR;
-    
-    txBuffer.msgLen = dataLen;
-    txBuffer.msgBuf = (uint8_t*)malloc(txBuffer.msgLen);
-    memcpy(txBuffer.msgBuf,data,txBuffer.msgLen);
-    SC_ERROR_CHECK(encryptAndSendTransport(smolNoice,&txBuffer));
-    free(txBuffer.msgBuf);
+  
+    pthread_mutex_lock(smolNoice->txQueueLock);
+    addToQueue(smolNoice->txQueue,data,dataLen);
+    pthread_mutex_unlock(smolNoice->txQueueLock);
+
     return SC_OK;
 }
 sc_err_t smolNoiceSetTransportCallback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(uint8_t*,uint8_t)){

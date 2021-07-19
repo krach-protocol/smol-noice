@@ -18,5 +18,5 @@ queue_t* initQueue(uint8_t);
 
 queue_err_e messageInQueue(queue_t*);
 queue_err_e getMessageFromQueue(queue_t*,sn_msg_t**);
-queue_err_e addToQueue(queue_t*,sn_msg_t*);
+queue_err_e addToQueue(queue_t*,uint8_t*,uint8_t);
 #endif

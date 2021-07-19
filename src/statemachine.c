@@ -1,5 +1,6 @@
 #include "statemachine.h"
 
+#include <string.h>
 #include <stdio.h>
 #include "handshake.h"
 #include "transport.h"
@@ -53,7 +54,7 @@ void* runnerTask(void* arg){
     sn_msg_t networkMsg = {0};
     printf("Starting main loop\n");
     while(run){
-        sleep_ms(500);
+        sleep_ms(20);
         switch(taskData->handShakeStep){
             case INIT_NETWORK:
                 printf("State: INIT NETWORK\n");
@@ -83,6 +84,7 @@ void* runnerTask(void* arg){
                     STATE_ERROR_CHECK(readMessageE_DHEE_S_DHES(taskData, &responsePaket));
 
                      taskData->handShakeStep = SEND_FIN;
+                     free(networkMsg.msgBuf);
                  }
             break;     
 
@@ -100,7 +102,7 @@ void* runnerTask(void* arg){
             break;            
              
             case DO_TRANSPORT:
-                printf("State: DO TRANSPORT\n");
+                //printf("State: DO TRANSPORT\n");
                 if(messageFromNetwork(taskData,&networkMsg)){
                     //STATE_ERROR_CHECK(unpackTransport(&rxPaket,&networkMsg));
                     //TransportPakets dont need to be unpacked, since its format is same as networkmessage
@@ -108,7 +110,20 @@ void* runnerTask(void* arg){
                     if(taskData->transportCallback != NULL){
                         taskData->transportCallback(networkMsg.msgBuf,networkMsg.msgLen);
                     }
+                    networkMsg.msgBuf -= 2;
+                    free(networkMsg.msgBuf);
                  }
+
+
+                pthread_mutex_lock(taskData->txQueueLock);
+                if(messageInQueue(taskData->txQueue) == DATA_AVAILIBLE){
+                    sn_msg_t* data = NULL;
+                    getMessageFromQueue(taskData->txQueue,&data);
+                    encryptAndSendTransport(taskData,(sn_buffer_t*) data);
+                    free(data->msgBuf);
+                    free(data);
+                }
+                pthread_mutex_unlock(taskData->txQueueLock);
             break;    
 
             case ERROR: 

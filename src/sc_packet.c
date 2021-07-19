@@ -87,7 +87,7 @@ sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg){
     packetLen  =  SC_EPHEMERAL_PUB_KEY_LEN; // We put version and type at the beginning and only count the bytes following that
     
     msg->msgLen = (size_t)packetLen + SC_PACKET_LEN_LEN + SC_VERSION_LEN + SC_TYPE_LEN;
-    msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
+    msg->msgBuf = (uint8_t*)calloc(1,msg->msgLen);
     writePtr = msg->msgBuf;
 
     memcpy(writePtr,&version, SC_VERSION_LEN);
@@ -129,7 +129,7 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     
 
 
-    packet->ephemeralPubKey = (uint8_t*)malloc(SC_EPHEMERAL_PUB_KEY_LEN);
+    packet->ephemeralPubKey = (uint8_t*)calloc(SC_EPHEMERAL_PUB_KEY_LEN,sizeof(uint8_t));
     memcpy((uint8_t*)(packet->ephemeralPubKey),readPtr,SC_EPHEMERAL_PUB_KEY_LEN);
     readPtr += SC_EPHEMERAL_PUB_KEY_LEN;
     readBytes += SC_EPHEMERAL_PUB_KEY_LEN;
@@ -161,7 +161,7 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
     if(packet->HandshakeType != HANDSHAKE_FIN) return SC_PAKET_ERR;
     packetLen = SC_TYPE_LEN + SC_PACKET_LEN_LEN+ SC_ID_LENGTH_LEN + packet->encryptedIdentityLen;// + packet->encryptedPayloadLen ;
     msg->msgLen = (size_t)packetLen;
-    msg->msgBuf = (uint8_t*)malloc(msg->msgLen);
+    msg->msgBuf = (uint8_t*)calloc(1,msg->msgLen);
     writePtr = msg->msgBuf;
 
     
@@ -182,6 +182,7 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
 
     memcpy(writePtr,packet->encryptedIdentity,packet->encryptedIdentityLen);
     writePtr+=packet->encryptedIdentityLen;
+    free(packet->encryptedIdentity);
 
     
 
