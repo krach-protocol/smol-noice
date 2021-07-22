@@ -75,14 +75,14 @@ sc_err_t sc_init(   sn_buffer_t *clientCert,
                     const char *addr,
                     uint16_t port)
     {
-    int err;
-    sc_err_t sc_err;
+
+
     NoiseDHState* localEphemeralKeypair = NULL; 
     NoiseHandshakeState *handshakeState;
     NoiseProtocolId krach = {0};
     task_data_t *taskData = (task_data_t*)malloc(sizeof(task_data_t));
-    int noiseErr = 0;
-    char errBuf[32];
+
+
 
     krach.cipher_id = NOISE_CIPHER_CHACHAPOLY;
     krach.dh_id = NOISE_DH_CURVE25519;
@@ -124,7 +124,7 @@ sc_err_t sc_destroy(NoiseHandshakeState *handshakeState){
 void* runnerTask(void* arg){
     task_data_t *taskData = (task_data_t*) arg;
     bool run = true;
-    sc_err_t sc_err;
+
     handshakeSteps currentStep = INIT_NETWORK;
     NoiseHandshakeState *handshakeState = taskData->handshake;
 
@@ -213,8 +213,8 @@ sc_err_t writeMessageE(NoiseHandshakeState *handshakeState,sc_handshakeInitPacke
     NoiseDHState *dhState;   
     size_t pubKeyLen;
     uint8_t* pubKey;
-    int noiseErr = 0;
-    char errBuf[32];
+
+
     
     dhState = handshakeState->dh_local_ephemeral;
     pubKeyLen = noise_dhstate_get_public_key_length(dhState);
@@ -235,9 +235,8 @@ sc_err_t writeMessageS(NoiseHandshakeState *handshakeState, sc_handshakeFinPacke
     NoiseSymmetricState *symmState = handshakeState->symmetric;
     NoiseBuffer buff;
     noise_buffer_init(buff);
-    int noiseErr = 0;
-    char errBuf[32];
-    uint8_t certLen = clientCert->msgLen;
+
+
     
     padBuffer(clientCert);
     
@@ -259,8 +258,8 @@ sc_err_t writeMessageDHSE(NoiseHandshakeState *handshakeState, sc_handshakeFinPa
     NoiseCipherState *sendCipher, *receiveCipher;
     uint8_t DHresult[32];
     size_t DHresultSize = 32;
-    int noiseErr = 0;
-    char errBuf[32];
+
+
 
     remoteStaticKeypair = noise_handshakestate_get_remote_public_key_dh(handshakeState); 
     localEphemeralKeypair = handshakeState->dh_local_ephemeral;
@@ -306,9 +305,6 @@ sc_err_t readMessageDHEE(NoiseHandshakeState *handshakeState, sc_handshakeRespon
     uint8_t DHresult[32];
     size_t DHresultSize = 32;
 
-    int noiseErr = 0;
-    char errBuf[32];
-
     NOISE_ERROR_CHECK(noise_dhstate_calculate(localEphemeralKeypair,remoteEphemeralKeypair,DHresult,DHresultSize));
     NOISE_ERROR_CHECK(noise_symmetricstate_mix_key(symmState,DHresult,DHresultSize));
 
@@ -319,11 +315,6 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
      NoiseDHState* remoteStaticKeypair = NULL;
      uint8_t remotePubKey[32];
      smolcert_t remoteCert = {0};
-
-    uint8_t* DHresult = NULL;
-    size_t DHresultSize = 0;
-    int noiseErr = 0;
-    char errBuf[32];
 
    NoiseSymmetricState *symmState = handshakeState->symmetric;
    NoiseBuffer idBuffer;
@@ -344,9 +335,6 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
 
     SC_ERROR_CHECK(sc_parse_certificate(packet->smolcert,packet->smolcertLen, &remoteCert));
     
-    uint8_t rootPubKey[32] = {
-        0x65,0x2F,0x0E,0x9B,0x6A,0x0F,0xA2,0x5E,0xD3,0x25,0x19,0xC9,0x19,0x73,0x99,0x64,
-        0x58,0xFC,0x58,0x32,0xA5,0x9B,0xAC,0x55,0xEA,0xED,0xF4,0x65,0xA0,0x5B,0x75,0xCB};
     //TODO implement callback for cert handling
     
     //TODO check why validation fails
@@ -383,13 +371,6 @@ sc_err_t readMessageE_DHEE_S_DHES(NoiseHandshakeState *handshakeState, sc_handsh
     SC_ERROR_CHECK(readMessageS(handshakeState, packet));
     SC_ERROR_CHECK(readMessageDHES(handshakeState, packet));
     return SC_OK;
-}
-
-
-
-void printCryptoData(NoiseHandshakeState *handshakeState){
-    NoiseCipherState* cipher = handshakeState->symmetric->cipher;
-    NoiseHashState* hash = handshakeState->symmetric->hash;
 }
 
 sc_err_t printNoiseErr(int noiseErr){
