@@ -333,7 +333,9 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
     packet->smolcertLen = smolCertBuffer.msgLen;
    
 
-    SC_ERROR_CHECK(sc_parse_certificate(packet->smolcert,packet->smolcertLen, &remoteCert));
+    if( sc_parse_certificate(packet->smolcert,packet->smolcertLen, &remoteCert) != Sc_No_Error){
+        return SC_ERR;
+    }
     
     //TODO implement callback for cert handling
     
@@ -341,7 +343,9 @@ sc_err_t readMessageS(NoiseHandshakeState *handshakeState, sc_handshakeResponseP
     //if(sc_validate_certificate_signature(packet->smolcert, packet->smolcertLen, rootPubKey) != SC_OK) return SC_ERR;
     
 
-    SC_ERROR_CHECK(sc_get_curve_public_key(&remoteCert,remotePubKey));
+    if( sc_get_curve_public_key(&remoteCert,remotePubKey) != Sc_No_Error) {
+        return SC_ERR;
+    }
     
     //Finally set the remote public Key in handshake state
     remoteStaticKeypair = noise_handshakestate_get_remote_public_key_dh(handshakeState);
