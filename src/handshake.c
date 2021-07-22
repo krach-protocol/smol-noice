@@ -406,10 +406,10 @@ sc_err_t padBuffer(sn_buffer_t* buffer){
 sc_err_t unpadBuffer(sn_buffer_t* buffer){
     uint8_t bufferLen = buffer->msgLen;
     uint8_t paddedBytes = buffer->msgBuf[0];
-     for(uint8_t idx = 0;idx<bufferLen-16;idx++){
+     for(uint8_t idx = 0;idx<bufferLen-(16+paddedBytes);idx++){
         buffer->msgBuf[idx] = buffer->msgBuf[idx+1];
     }
-    buffer->msgBuf[bufferLen-16] = '\0';
+    buffer->msgBuf[bufferLen-(16+paddedBytes)] = '\0';
 
 
     return SC_OK;
