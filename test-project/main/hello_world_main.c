@@ -14,16 +14,70 @@
 #include "esp_spi_flash.h"
 
 #include <sodium.h>
-#include "handshake.h"
+
+/*#include "handshake.h"
 #include "sc_packet.h"
 #include "sc_err.h"
+*/
+
+#include "smol-noice.h"
+
+sc_err_t clientCb(uint8_t* data, uint8_t len);
+
+sc_err_t clientCb(uint8_t* data, uint8_t len){
+    for(uint8_t idx = 0; idx < len; idx++){
+        printf("%c",data[idx]);
+    }
+    return SC_OK;
+}
+
+sc_err_t remoteCertCb(uint8_t* data, uint8_t len);
+
+sc_err_t remoteCertCb(uint8_t* data, uint8_t len){
+    for(uint8_t idx = 0; idx < len; idx++){
+        printf("%c",data[idx]);
+    }
+    return SC_OK;
+}
+
+
+
+
 
 void app_main(void)
 {
+    smolNoice_t* testConn = smolNoice();
+    const char* host = "127.0.0.1";
+    uint8_t clientCertBuffer[256];
+    uint8_t clientCertLen = 255;
+    uint8_t clientPrivateKey[32];
+
+    uint8_t pdx = 0;
+
+    smolNoiceSetHost(testConn,host,9095);
+    smolNoiceSetClientCert(testConn,clientCertBuffer,clientCertLen);
+    smolNoiceSetClientPrivateKey(testConn,clientPrivateKey);
+
+    smolNoiceSetTransportCallback(testConn,clientCb);
+    smolNoiceSetRemoteCertCallback(testConn,remoteCertCb);
+
+    smolNoiceStart(testConn);
+    while(smolNoiceReadyForTransport(testConn) != SC_OK);
+
+    while(1){
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+        pdx++;
+        printf("Sending %d \n",pdx);
+        smolNoiceSendData(testConn,1,&pdx);
+    }
+    
+
     // Currently this won't execute in a meaningful way, this is to test the build process
+    /*
     smolcert_t *clientCert = (smolcert_t*)malloc(sizeof(smolcert_t));
     sn_buffer_t clientCertBuffer;
     sn_buffer_t rootCertBuffer;
-    const char* host = "127.0.0.1";
     sc_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
+    */
+
 }
