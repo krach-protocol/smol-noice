@@ -25,7 +25,7 @@ typedef struct {
 } queue_t;
 
 
-typedef enum{EMPTY,DATA_AVAILIBLE,FULL, OK,NO_MEM} queue_err_e;
+typedef enum{EMPTY,DATA_AVAILIBLE,FULL, QUEUE_OK,NO_MEM} queue_err_e;
 
 queue_t* initQueue(uint8_t);
 

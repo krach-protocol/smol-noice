@@ -206,6 +206,7 @@ sc_err_t readMessageE_DHEE_S_DHES(smolNoice_t* smolNoice, sc_handshakeResponsePa
     return SC_OK;
 }
 
+/*
 sc_err_t printNoiseErr(int noiseErr){
     char errBuf[32];
 
@@ -217,19 +218,22 @@ sc_err_t printNoiseErr(int noiseErr){
 
     return SC_OK;
 }
+*/
 
 
-
+/*
 void printCryptoData(NoiseHandshakeState *handshakeState){
     NoiseCipherState* cipher = handshakeState->symmetric->cipher;
     NoiseHashState* hash = handshakeState->symmetric->hash;
 }
+*/
 
 sc_err_t sendTransport(sn_buffer_t txData);
 sc_err_t sendTransport(sn_buffer_t txData){
 
-
+    return SC_OK;
 }
+/*
 sc_err_t unpadBuffer(sn_buffer_t* buffer){
     uint8_t bufferLen = buffer->msgLen;
     uint8_t paddedBytes = buffer->msgBuf[0];
@@ -241,6 +245,7 @@ sc_err_t unpadBuffer(sn_buffer_t* buffer){
 
     return SC_OK;
 }
+*/
 sc_err_t splitCipher(smolNoice_t* smolNoice){
      //split symmetric state for encrypt(first cipher) and decrypt(second cipher)
     //see: http://rweather.github.io/noise-c/group__symmetricstate.html#gadf7cef60a64aef703add9b093c3b6c63
