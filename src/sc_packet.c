@@ -112,7 +112,9 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     uint8_t version = 0;
     uint16_t packetLen = 0;
     uint8_t* readPtr = msg->msgBuf;
-    sc_err_t err = SC_OK; 
+    sc_err_t err = SC_OK;
+  
+    
     memcpy((uint8_t*)&(packet->HandshakeType), readPtr,SC_TYPE_LEN);
     if (packet->HandshakeType != HANDSHAKE_RESPONSE) {
         return SC_PAKET_ERR;
@@ -123,6 +125,7 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *
     if((readBytes + SC_PACKET_LEN_LEN + SC_TYPE_LEN) > SC_MAX_PACKET_LEN) return SC_PAKET_ERR;
     
     packetLen = readUint16(readPtr);
+   
     readPtr += SC_PACKET_LEN_LEN;
     readBytes += SC_PACKET_LEN_LEN;
     if(readBytes >= (packetLen+SC_TYPE_LEN + SC_PACKET_LEN_LEN)) return SC_PAKET_ERR;

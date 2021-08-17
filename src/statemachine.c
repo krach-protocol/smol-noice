@@ -54,7 +54,7 @@ void* runnerTask(void* arg){
     sn_msg_t networkMsg = {0};
     printf("Starting main loop\n");
     while(run){
-        sleep_ms(20);
+        //sleep_ms(20);
         switch(taskData->handShakeStep){
             case INIT_NETWORK:
                 printf("State: INIT NETWORK\n");
@@ -71,15 +71,15 @@ void* runnerTask(void* arg){
                 
                 STATE_ERROR_CHECK(writeMessageE(taskData,&initPaket));
                 initPaket.HandshakeType = HANDSHAKE_INIT;
-               
                 STATE_ERROR_CHECK(packHandshakeInit(&initPaket,&networkMsg));
                 sendOverNetwork(taskData,&networkMsg);
                  taskData->handShakeStep = WAIT_FOR_RES;
             break;    
 
             case WAIT_FOR_RES:
-                printf("State: WAIT FOR RESPONSE\n");
+                //printf("State: WAIT FOR RESPONSE\n");
                 if(messageFromNetwork(taskData,&networkMsg)){
+                    printf("Got message from network\n");
                     STATE_ERROR_CHECK(unpackHandshakeResponse(&responsePaket,&networkMsg));
                     STATE_ERROR_CHECK(readMessageE_DHEE_S_DHES(taskData, &responsePaket));
 
@@ -106,7 +106,10 @@ void* runnerTask(void* arg){
                 if(messageFromNetwork(taskData,&networkMsg)){
                     //STATE_ERROR_CHECK(unpackTransport(&rxPaket,&networkMsg));
                     //TransportPakets dont need to be unpacked, since its format is same as networkmessage
+                    //printf("Decrypt transport: \n");
                     STATE_ERROR_CHECK(decryptTransport(taskData, &networkMsg));
+                    
+                    //printHex(networkMsg.msgBuf,networkMsg.msgLen);
                     if(taskData->transportCallback != NULL){
                         taskData->transportCallback(networkMsg.msgBuf,networkMsg.msgLen);
                     }
@@ -116,12 +119,11 @@ void* runnerTask(void* arg){
 
 
                 pthread_mutex_lock(taskData->txQueueLock);
-                if(messageInQueue(taskData->txQueue) == DATA_AVAILIBLE){
-                    sn_msg_t* data = NULL;
-                    getMessageFromQueue(taskData->txQueue,&data);
-                    encryptAndSendTransport(taskData,(sn_buffer_t*) data);
-                    free(data->msgBuf);
-                    free(data);
+                sn_buffer_t* dataBuffer = NULL;
+                if(queue_read(taskData->txQueue,&dataBuffer) == DATA_AVAILIBLE){
+                    encryptAndSendTransport(taskData,dataBuffer);
+                    free(dataBuffer->msgBuf);
+                    free(dataBuffer);
                 }
                 pthread_mutex_unlock(taskData->txQueueLock);
             break;    

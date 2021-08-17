@@ -12,13 +12,18 @@ sc_err_t encryptAndSendTransport(smolNoice_t* smolNoice,sn_buffer_t* paket){
     NoiseBuffer txBuffer;
 
     if(smolNoice->handShakeStep != DO_TRANSPORT) return SC_ERR;
+    //printf("Padding... \n");
+    //printHex(paket->msgBuf,paket->msgLen);
    
     SC_ERROR_CHECK(padBuffer(paket));
+    //printf("Encrypting... \n");
+    //printHex(paket->msgBuf,paket->msgLen);
 
 
     noise_buffer_set_inout(txBuffer, paket->msgBuf, paket->msgLen-16, paket->msgLen);
     NOISE_ERROR_CHECK(noise_cipherstate_encrypt(smolNoice->txCipher,&txBuffer));
     
+    //TODO: wrap pack and unpack in dedicated functions
     sn_msg_t rawPacket;
     rawPacket.msgLen = paket->msgLen+2;
     rawPacket.msgBuf = (uint8_t*)calloc(1,rawPacket.msgLen);
@@ -28,10 +33,11 @@ sc_err_t encryptAndSendTransport(smolNoice_t* smolNoice,sn_buffer_t* paket){
     writePtr++;
     *writePtr = ((rawPacket.msgLen-2)&0xFF00)>>8;
     writePtr++;
-
+        
     memcpy(writePtr,paket->msgBuf,paket->msgLen);
    
     sendOverNetwork(smolNoice,&rawPacket);
+
 
     return SC_OK;
 }
@@ -46,7 +52,13 @@ sc_err_t decryptTransport(smolNoice_t* smolNoice,sn_buffer_t* paket){
     //memcpy(unpackedNetworkPaket.msgBuf,paket->msgBuf+2,unpackedNetworkPaket.msgLen);
 
     noise_buffer_set_inout(rxBuffer,paket->msgBuf+2,paket->msgLen-2,paket->msgLen-2);
-    NOISE_ERROR_CHECK(noise_cipherstate_decrypt(smolNoice->rxCipher,&rxBuffer));
+    //printf("Decrypting message with length: %d \n",paket->msgLen);
+    //printHex(paket->msgBuf,paket->msgLen);
+    //NOISE_ERROR_CHECK(noise_cipherstate_decrypt(smolNoice->rxCipher,&rxBuffer));
+    if(noise_cipherstate_decrypt(smolNoice->rxCipher,&rxBuffer) != NOISE_ERROR_NONE){
+        
+        return SC_ERR;
+    }
     paket->msgBuf +=2;
     SC_ERROR_CHECK(unpadBuffer(paket));
     return SC_OK;

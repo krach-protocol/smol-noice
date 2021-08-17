@@ -237,7 +237,7 @@ void test_makeNoiseHandshake(void){
 sc_err_t testTransportCallBack(uint8_t* data, uint8_t dataLen){
   printf("TRANSPORT: Got Data with length %d \n",dataLen);
   
-  data[7] = '\0';
+  data[12] = '\0';
     printf("%s\n",data);
 
   return SC_OK;
@@ -286,10 +286,10 @@ printf("Ready for Transport... \n");
 
 
    char testBuffer[32];
-   uint8_t i = 0;
+   uint32_t i = 0;
   while(1){
     // sleep_ms(50);
-    usleep(50000);
+    //usleep(10000);
     sprintf(testBuffer,"ping %d", i++);
     smolNoiceSendData(smolNoiceTest,strlen(testBuffer),(uint8_t*)testBuffer);
 

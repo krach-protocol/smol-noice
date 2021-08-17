@@ -28,6 +28,8 @@ smolNoice_t* smolNoice(void){
     if((smolNoice->txQueue = initQueue(QUEUE_LEN)) == NULL){
        printf(" Error : Init Queue Failed \n");   
     }
+    smolNoice->txQueue->queueName = strdup("TxQueue");
+    smolNoice->rxQueue->queueName = strdup("RxQueue");
     smolNoice->txQueueLock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(smolNoice->txQueueLock, NULL);
 
@@ -65,9 +67,19 @@ sc_err_t smolNoiceSetClientPrivateKey(smolNoice_t* smolNoice,uint8_t* privateKey
 
 sc_err_t smolNoiceSendData(smolNoice_t* smolNoice,uint8_t dataLen,uint8_t* data){
     if(smolNoice->handShakeStep != DO_TRANSPORT) return SC_ERR;
+    
+    sn_buffer_t *dataBuffer = (sn_buffer_t*)calloc(1,sizeof(sn_buffer_t));
+    dataBuffer->msgLen = dataLen;
+    dataBuffer->msgBuf = (uint8_t*)calloc(1,dataBuffer->msgLen);
+    memcpy(dataBuffer->msgBuf,data,dataBuffer->msgLen);
   
     pthread_mutex_lock(smolNoice->txQueueLock);
-    addToQueue(smolNoice->txQueue,data,dataLen);
+    if(queue_peek(smolNoice->txQueue) == FULL){
+        //printf("Tx queue full!\n");
+        pthread_mutex_unlock(smolNoice->txQueueLock);
+        return SC_ERR;
+    }
+    queue_write(smolNoice->txQueue,dataBuffer);
     pthread_mutex_unlock(smolNoice->txQueueLock);
 
     return SC_OK;
