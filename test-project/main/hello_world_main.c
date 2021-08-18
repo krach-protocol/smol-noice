@@ -13,6 +13,8 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 
+#include "deviceData-cl.h"
+
 #include <sodium.h>
 
 /*#include "handshake.h"
@@ -31,7 +33,7 @@ sc_err_t clientCb(uint8_t* data, uint8_t len){
     return SC_OK;
 }
 
-sc_err_t remoteCertCb(uint8_t* data, uint8_t len);
+sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert);
 
 sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert){
     for(uint8_t idx = 0; idx < len; idx++){
