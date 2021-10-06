@@ -1,0 +1,21 @@
+version: 2.1
+
+jobs:
+  test-build:
+    docker:
+    - image: connctd/idf-build:latest
+    steps:
+      - checkout
+      - run:
+          name: Build test project
+          command: |
+            cd test-project && idf.py build
+workflows:
+  version: 2
+  build-image:
+    jobs:
+      # always do this - keep in mind: branches are included by default, tags excluded by default
+      - test-build:
+          filters:
+            tags:
+              only: /^.*/
