@@ -9,7 +9,7 @@ jobs:
       - run:
           name: Build test project
           command: |
-            cd test-project && idf.py build
+            source /esp/esp-idf/export.sh && cd test-project && idf.py build
 workflows:
   version: 2
   build-image:
