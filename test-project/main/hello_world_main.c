@@ -45,8 +45,9 @@ EventGroupHandle_t s_wifi_event_group;
 #define DEMO_WIFI_SSID "starterkitchen.de"
 #define DEMO_WIFI_PW "starterkitchen2012"
 
-esp_err_t initDeviceData();
 
+sc_err_t clientCb(uint8_t* data, uint8_t len);
+sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert);
 
 void transportCallback(uint8_t* data){
     uint8_t parsedPort = 0;
@@ -72,13 +73,6 @@ void dns_found_cb(const char *name, const ip_addr_t *ipaddr, void *callback_arg)
 }
 
 
-
-
-
-#define HOST_URL "citynode.ingress.connctd.io"
-
-sc_err_t clientCb(uint8_t* data, uint8_t len);
-
 sc_err_t clientCb(uint8_t* data, uint8_t len){
     for(uint8_t idx = 0; idx < len; idx++){
         printf("%c",data[idx]);
@@ -86,7 +80,6 @@ sc_err_t clientCb(uint8_t* data, uint8_t len){
     return SC_OK;
 }
 
-sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert);
 
 sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert){
     for(uint8_t idx = 0; idx < len; idx++){
@@ -98,32 +91,30 @@ sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert){
 void app_main(void)
 {
     smolNoice_t* testConn = smolNoice();
-    //const char* host = "127.0.0.1";
     char hostIP[32];
     char* hostURL = "google.de";
-    uint8_t clientCertBuffer[256];
-    uint8_t clientCertLen = 255;
-    uint8_t clientPrivateKey[32];
+    uint16_t hostPort = 48032;
+    uint8_t* clientCertBuffer = NULL;
+    uint8_t clientCertLen = 0;
+    uint8_t* clientPrivateKeyBuffer  = NULL;
+    uint8_t clientPrivateKeyLen = 0;
+    uint8_t *rootCertbuffer  = NULL;
+    uint8_t rootCertLen = 0;
 
     uint8_t pdx = 0;
 
-    if( initNVS() != ESP_OK) printf("Error opening NVS\n");
-    if(clPortOpeninitLock() != ESP_OK) printf("Error initialzing Lock HAL\n");
+    if( initNVS() != ESP_OK) ESP_LOGE("main","Error opening NVS\n");
+    if(clPortOpeninitLock() != ESP_OK) ESP_LOGE("main","Error initialzing Lock HAL\n");
 
+    //CLI Setup
     esp_console_repl_t *repl = NULL;
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-
-    repl_config.prompt = "cl-cli>";
-
-
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+    repl_config.prompt = "cl-cli>";
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
-
     register_NVScl();
     register_wifiCL();
     register_PortOpen();
-
-    // start console REPL
     ESP_ERROR_CHECK(esp_console_start_repl(repl));   
     
     //WIFI Setup
@@ -140,47 +131,36 @@ void app_main(void)
     //DNS resolve 
     ip_addr_t ip_Addr;
     IP_ADDR4( &ip_Addr, 0,0,0,0 );
-    printf("Get IP for URL: %s\n", hostURL );
+    ESP_LOGI("main","Get IP for URL: %s\n", hostURL );
     dns_gethostbyname(hostURL, &ip_Addr, dns_found_cb, &hostIP);
-   
     while( !DNSFound );
-        
-
-    printf("IP Adress for %s is %s",hostURL,hostIP);
+    ESP_LOGI("main","IP Adress for %s is %s",hostURL,hostIP);
 
 
-    //Start application
-    
-    /*
-    smolNoiceSetHost(testConn,host,9095);
+   
+    //Get Certs from NVS
+    sn_getClientCert(&clientCertBuffer,&clientCertLen);
+    sn_getPrivateKey(&clientPrivateKeyBuffer,&clientPrivateKeyLen);
+    sn_getRootCert(&rootCertbuffer,&rootCertLen);
+
+    //Setup smol-noice
+    smolNoiceSetHost(testConn,hostIP,hostPort);
     smolNoiceSetClientCert(testConn,clientCertBuffer,clientCertLen);
-    smolNoiceSetClientPrivateKey(testConn,clientPrivateKey);
+    smolNoiceSetClientPrivateKey(testConn,clientPrivateKeyBuffer);
 
     smolNoiceSetTransportCallback(testConn,clientCb);
     smolNoiceSetRemoteCertCallback(testConn,remoteCertCb);
 
+     //Start application
     smolNoiceStart(testConn);
     while(smolNoiceReadyForTransport(testConn) != SC_OK);
 
+    
     while(1){
         vTaskDelay(1000/portTICK_PERIOD_MS);
         pdx++;
-        printf("Sending %d \n",pdx);
+        ESP_LOGI("main","Sending %d \n",pdx);
         smolNoiceSendData(testConn,1,&pdx);
-    }
-    */
-
-    // Currently this won't execute in a meaningful way, this is to test the build process
-    /*
-    smolcert_t *clientCert = (smolcert_t*)malloc(sizeof(smolcert_t));
-    sn_buffer_t clientCertBuffer;
-    sn_buffer_t rootCertBuffer;
-    sc_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
-    */
-
-    while(1){
-        vTaskDelay(1000/portTICK_PERIOD_MS);
-        printf("Derp\n");
     }
 }
 
