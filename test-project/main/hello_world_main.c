@@ -25,14 +25,9 @@
 #include "lwip/ip4_addr.h"
 #include "lwip/dns.h"
 
-#include "deviceData-cl.h"
 
 #include "nvs_flash.h"
 
-
-#include "lwip/inet.h"
-#include "lwip/ip4_addr.h"
-#include "lwip/dns.h"
 
 #include <sodium.h>
 
@@ -81,14 +76,6 @@ void dns_found_cb(const char *name, const ip_addr_t *ipaddr, void *callback_arg)
 
 
 #define HOST_URL "citynode.ingress.connctd.io"
-#define DEMO_WIFI_SSID
-#define DEMO_WIFI_PW
-
-
-char URL[] = HOST_URL;
-ip_addr_t ip_Addr;
-
-
 
 sc_err_t clientCb(uint8_t* data, uint8_t len);
 
