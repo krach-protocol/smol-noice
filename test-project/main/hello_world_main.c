@@ -13,16 +13,26 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 
+#include "lwip/inet.h"
+#include "lwip/ip4_addr.h"
+#include "lwip/dns.h"
+
 #include "deviceData-cl.h"
 
 #include <sodium.h>
 
-/*#include "handshake.h"
-#include "sc_packet.h"
-#include "sc_err.h"
-*/
-
 #include "smol-noice.h"
+
+
+#define HOST_URL "citynode.ingress.connctd.io"
+#define DEMO_WIFI_SSID
+#define DEMO_WIFI_PW
+
+
+char URL[] = HOST_URL;
+ip_addr_t ip_Addr;
+
+
 
 sc_err_t clientCb(uint8_t* data, uint8_t len);
 
@@ -43,6 +53,22 @@ sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert){
 }
 
 
+bool wifiConnected = false;
+bool DNSFound = false;
+esp_err_t wifi_event_cb(void *ctx, system_event_t *event)
+{
+    if( event->event_id == SYSTEM_EVENT_STA_GOT_IP ) {
+        wifiConnected = true;
+    }
+    
+    return ESP_OK;
+}
+void dns_found_cb(const char *name, const ip_addr_t *ipaddr, void *callback_arg)
+{
+    ip_Addr = *ipaddr;
+    bDNSFound = true;
+}
+
 
 
 
@@ -56,6 +82,39 @@ void app_main(void)
 
     uint8_t pdx = 0;
 
+    wifi_config_t config;
+
+    //WIFI Setup
+    esp_event_set_cb(wifi_event_cb, NULL);
+    esp_wifi_set_mode(WIFI_MODE_STA);
+
+    memset(&config,0,sizeof(config));
+    strcpy( config.sta.ssid, DEMO_WIFI_SSID );
+    strcpy( config.sta.password, DEMO_WIFI_PW );
+	
+    esp_wifi_set_config( WIFI_IF_STA, &config );
+    esp_wifi_start();
+    esp_wifi_connect();
+    
+    while( !wifiConnected );
+
+    //DNS resolve 
+    IP_ADDR4( &ip_Addr, 0,0,0,0 );
+    printf("Get IP for URL: %s\n", URL );
+    dns_gethostbyname(URL, &ip_Addr, dns_found_cb, NULL );
+   
+    while( !DNSFound );
+        
+    printf( "DNS found: %i.%i.%i.%i\n", 
+        ip4_addr1(&ip_Addr.u_addr.ip4), 
+        ip4_addr2(&ip_Addr.u_addr.ip4), 
+        ip4_addr3(&ip_Addr.u_addr.ip4), 
+        ip4_addr4(&ip_Addr.u_addr.ip4) );
+
+
+    //Start application
+    
+    /*
     smolNoiceSetHost(testConn,host,9095);
     smolNoiceSetClientCert(testConn,clientCertBuffer,clientCertLen);
     smolNoiceSetClientPrivateKey(testConn,clientPrivateKey);
@@ -72,7 +131,7 @@ void app_main(void)
         printf("Sending %d \n",pdx);
         smolNoiceSendData(testConn,1,&pdx);
     }
-    
+    */
 
     // Currently this won't execute in a meaningful way, this is to test the build process
     /*
@@ -82,4 +141,8 @@ void app_main(void)
     sc_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
     */
 
+    while(1){
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+        printf("Derp\n");
+    }
 }
