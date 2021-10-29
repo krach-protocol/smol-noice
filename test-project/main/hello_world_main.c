@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+#include "wifi-cl.h"
 
 #include <sodium.h>
 
@@ -51,6 +52,51 @@ void app_main(void)
     uint8_t clientCertBuffer[256];
     uint8_t clientCertLen = 255;
     uint8_t clientPrivateKey[32];
+
+
+    esp_err_t err;
+    char hostIP[32];
+    char URL[] = HOST_URL;
+    if( initNVS() != ESP_OK) printf("Error opening NVS\n");
+    if(clPortOpeninitLock() != ESP_OK) printf("Error initialzing Lock HAL\n");
+    wifi_init_sta(); 
+
+    
+    esp_console_repl_t *repl = NULL;
+    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+
+    repl_config.prompt = "cl-cli>";
+
+
+    esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
+
+    register_NVScl();
+    register_wifiCL();
+    register_PortOpen();
+
+    // start console REPL
+    ESP_ERROR_CHECK(esp_console_start_repl(repl));   
+
+     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+            pdFALSE,
+            pdFALSE,
+            portMAX_DELAY);
+     if (bits & WIFI_CONNECTED_BIT) {
+        
+        //Application Code
+       
+        while( !DNSFound ){
+            ip_addr_t ip_Addr;
+            IP_ADDR4( &ip_Addr, 0,0,0,0 );  
+            dns_gethostbyname(URL, &ip_Addr, dns_found_cb, &hostIP );
+            vTaskDelay(200/portTICK_PERIOD_MS);
+        }
+        
+
+    printf("IP Adress for %s is %s\n",URL,hostIP);
+}
 
     uint8_t pdx = 0;
 
