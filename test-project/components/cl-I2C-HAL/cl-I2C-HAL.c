@@ -3,8 +3,8 @@
 #include "cl-I2C-HAL.h"
 
 #define I2C_PORT I2C_NUM_0
-#define I2C_SCL GPIO_NUM_23
-#define I2C_SDA GPIO_NUM_22
+#define I2C_SCL GPIO_NUM_19
+#define I2C_SDA GPIO_NUM_18
 #define I2C_FREQ 400000
 
 esp_err_t I2Cinit();

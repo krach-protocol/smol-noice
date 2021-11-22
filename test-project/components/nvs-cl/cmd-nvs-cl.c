@@ -15,7 +15,6 @@ static struct{
 
 static int dogetPrivateKey(int argc, char **argv)
 {
-    esp_err_t err;
     uint8_t* privateKey = NULL;
     uint8_t keyLen = 0;
 
@@ -49,7 +48,6 @@ static struct{
 
 static int dogetClientCert(int argc, char **argv)
 {
-    esp_err_t err;
     uint8_t* clientCert = NULL;
     uint8_t certLen = 0;
 
@@ -84,7 +82,6 @@ static struct{
 
 static int doGetRootCert(int argc, char **argv)
 {
-    esp_err_t err;
     uint8_t* rootCert;
     uint8_t certLen = 0;
 

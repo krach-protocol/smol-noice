@@ -13,8 +13,8 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-#define EXAMPLE_ESP_WIFI_SSID      "starterkitchen.de"
-#define EXAMPLE_ESP_WIFI_PASS      "starterkitchen2012"
+#include "nvs-cl.h"
+
 #define EXAMPLE_ESP_MAXIMUM_RETRY  5
 
 
@@ -45,6 +45,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 void wifi_init_sta(void)
 {
+    char *ssid=NULL, *wifiPassword=NULL;
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -68,10 +69,18 @@ void wifi_init_sta(void)
                                                         NULL,
                                                         &instance_got_ip));
 
+    if(getWifiSSID(&ssid) != ESP_OK){
+        ESP_LOGE(TAG,"Error getting Wifi SSID");
+        return ESP_FAIL;
+    }
+    if(getWifiPassword(&wifiPassword) != ESP_OK){
+        ESP_LOGE(TAG,"Error getting Wifi password");
+        return ESP_FAIL;
+    }
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .password = EXAMPLE_ESP_WIFI_PASS,
+            .ssid = "NULL",
+            .password = "NULL",
            
 	     .threshold.authmode = WIFI_AUTH_WPA2_PSK,
 
@@ -81,6 +90,10 @@ void wifi_init_sta(void)
             },
         },
     };
+
+    strncpy((char *) wifi_config.sta.ssid,ssid,strlen(ssid));
+    strncpy((char *) wifi_config.sta.password,wifiPassword,strlen(wifiPassword));
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
@@ -97,7 +110,7 @@ void wifi_init_sta(void)
  
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+                 ssid, wifiPassword);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }

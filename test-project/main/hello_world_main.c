@@ -20,6 +20,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_console.h"
+#include "esp_err.h"
 
 #include "lwip/inet.h"
 #include "lwip/ip4_addr.h"
@@ -42,8 +43,7 @@
 #define WIFI_FAIL_BIT      BIT1
 EventGroupHandle_t s_wifi_event_group;
 
-#define DEMO_WIFI_SSID "starterkitchen.de"
-#define DEMO_WIFI_PW "starterkitchen2012"
+#define HOST_URL "citynode.ingress.connctd.io"
 
 
 sc_err_t clientCb(uint8_t* data, uint8_t len);
@@ -92,7 +92,7 @@ void app_main(void)
 {
     smolNoice_t* testConn = smolNoice();
     char hostIP[32];
-    char* hostURL = "google.de";
+    char* hostURL = HOST_URL;
     uint16_t hostPort = 48032;
     uint8_t* clientCertBuffer = NULL;
     uint8_t clientCertLen = 0;
@@ -100,11 +100,12 @@ void app_main(void)
     uint8_t clientPrivateKeyLen = 0;
     uint8_t *rootCertbuffer  = NULL;
     uint8_t rootCertLen = 0;
+    esp_err_t err;
 
     uint8_t pdx = 0;
 
-    if( initNVS() != ESP_OK) ESP_LOGE("main","Error opening NVS\n");
-    if(clPortOpeninitLock() != ESP_OK) ESP_LOGE("main","Error initialzing Lock HAL\n");
+    if( (err = initNVS()) != ESP_OK) ESP_LOGE("main","Error opening NVS: %s\n",esp_err_to_name(err));
+    if( (err = clPortOpeninitLock()) != ESP_OK) ESP_LOGE("main","Error initialzing Lock HAL: %s\n",esp_err_to_name(err));
 
     //CLI Setup
     esp_console_repl_t *repl = NULL;
@@ -132,8 +133,9 @@ void app_main(void)
     ip_addr_t ip_Addr;
     IP_ADDR4( &ip_Addr, 0,0,0,0 );
     ESP_LOGI("main","Get IP for URL: %s\n", hostURL );
-    dns_gethostbyname(hostURL, &ip_Addr, dns_found_cb, &hostIP);
-    while( !DNSFound );
+    while( !DNSFound ){
+        dns_gethostbyname(hostURL, &ip_Addr, dns_found_cb, &hostIP);
+    }
     ESP_LOGI("main","IP Adress for %s is %s",hostURL,hostIP);
 
 
