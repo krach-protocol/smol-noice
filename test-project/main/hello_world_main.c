@@ -51,6 +51,7 @@ EventGroupHandle_t s_wifi_event_group;
 
 sc_err_t clientCb(uint8_t* data, uint16_t len);
 sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert);
+void parseMessage(uint8_t* data, uint16_t len);
 
 void transportCallback(uint8_t* data){
     uint8_t parsedPort = 0;
@@ -103,11 +104,12 @@ sc_err_t clientCb(uint8_t* data, uint16_t len){
     }
     if(receivedLen == expectedMsgLen) {
         // Packet completely received into msgBuf
+        uint16_t len = receivedLen;
         lengthReceived = false;
         waitingForData = false;
         receivedLen = 0;
         expectedMsgLen = 0;
-        // TODO hand msgBuf off to cbor parsing etc.
+        parseMessage(msgBuf, len);
     }
     return SC_OK;
 }
