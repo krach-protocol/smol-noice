@@ -38,6 +38,8 @@
 #include "cl-PortOpen.h"
 #include "nvs-cl.h"
 
+#include "cbor.h"
+
 
 
 #define WIFI_CONNECTED_BIT BIT0
@@ -108,6 +110,37 @@ sc_err_t clientCb(uint8_t* data, uint16_t len){
         // TODO hand msgBuf off to cbor parsing etc.
     }
     return SC_OK;
+}
+
+void parseMessage(uint8_t* data, uint16_t len) {
+    CborParser parser;
+    CborValue it;
+    CborError err = cbor_parser_init(data, (size_t)len, 0, &parser, &it);
+    if(err != CborNoError) {
+        // TODO log this error, probably close connection and reconnect
+        return;
+    }
+    if(cbor_value_is_map(&it)) {
+        // If we have a map
+        CborValue val;
+        // Find the key 'command-name' and get a pointer to its value
+        err = cbor_value_map_find_value(&it, "command-name", &val);
+        if(err != CborNoError) {
+            // TODO log error etc.
+            return;
+        }
+        bool isOpen = false;
+        // Check that the value is actually euqal to the string 'open'
+        err = cbor_value_text_string_equals(&val, "open", &isOpen);
+        if(err != CborNoError) {
+            // TODO log error etc.
+            return;
+        }
+        if(isOpen) {
+            // TODO open lock
+        }
+    }
+    
 }
 
 
