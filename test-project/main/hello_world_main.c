@@ -46,7 +46,7 @@ EventGroupHandle_t s_wifi_event_group;
 #define HOST_URL "citynode.ingress.connctd.io"
 
 
-sc_err_t clientCb(uint8_t* data, uint8_t len);
+sc_err_t clientCb(uint8_t* data, uint16_t len);
 sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert);
 
 void transportCallback(uint8_t* data){
@@ -73,7 +73,7 @@ void dns_found_cb(const char *name, const ip_addr_t *ipaddr, void *callback_arg)
 }
 
 
-sc_err_t clientCb(uint8_t* data, uint8_t len){
+sc_err_t clientCb(uint8_t* data, uint16_t len){
     for(uint8_t idx = 0; idx < len; idx++){
         printf("%c",data[idx]);
     }

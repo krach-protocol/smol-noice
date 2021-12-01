@@ -84,7 +84,7 @@ sc_err_t smolNoiceSendData(smolNoice_t* smolNoice,uint8_t dataLen,uint8_t* data)
 
     return SC_OK;
 }
-sc_err_t smolNoiceSetTransportCallback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(uint8_t*,uint8_t)){
+sc_err_t smolNoiceSetTransportCallback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(uint8_t*,uint16_t)){
     if(dataCb == NULL) return SC_ERR;
     smolNoice->transportCallback = dataCb;
 
