@@ -33,6 +33,7 @@
 #include <sodium.h>
 
 #include "smol-noice.h"
+#include "sc_packet.h"
 #include "wifi-cl.h"
 #include "cl-PortOpen.h"
 #include "nvs-cl.h"
@@ -72,10 +73,39 @@ void dns_found_cb(const char *name, const ip_addr_t *ipaddr, void *callback_arg)
     vTaskDelay(200/portTICK_PERIOD_MS);
 }
 
+static uint8_t msgBuf[1024];
+static uint16_t expectedMsgLen= 0;
+static uint16_t receivedLen = 0;
+static bool lengthReceived = false;
+static bool waitingForData = false;
 
 sc_err_t clientCb(uint8_t* data, uint16_t len){
-    for(uint8_t idx = 0; idx < len; idx++){
-        printf("%c",data[idx]);
+    size_t offset = 0;
+    if(!lengthReceived) {
+        if(len>1) {
+            expectedMsgLen = readUint16(data);
+            lengthReceived = true;
+            waitingForData = true;
+            offset = 2;
+        } else {
+            // Currently not supported to only partially receive the prefixed length
+            // We should cancel and reestablish the connection
+            return SC_ERR;
+        }
+    }
+    if(waitingForData) {
+        uint8_t* destPtr = msgBuf + receivedLen;
+        uint8_t* srcPtr = data + offset;
+        memcpy(destPtr, srcPtr, len - offset);
+        receivedLen += (len - offset);
+    }
+    if(receivedLen == expectedMsgLen) {
+        // Packet completely received into msgBuf
+        lengthReceived = false;
+        waitingForData = false;
+        receivedLen = 0;
+        expectedMsgLen = 0;
+        // TODO hand msgBuf off to cbor parsing etc.
     }
     return SC_OK;
 }
