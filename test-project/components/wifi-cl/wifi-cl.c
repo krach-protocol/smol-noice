@@ -94,6 +94,7 @@ void wifi_init_sta(void)
     strncpy((char *) wifi_config.sta.ssid,ssid,strlen(ssid));
     strncpy((char *) wifi_config.sta.password,wifiPassword,strlen(wifiPassword));
 
+    ESP_LOGI(TAG, "connecting to SSID:%s password:****%s",ssid, &wifiPassword[strlen(wifiPassword)-4]);
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );

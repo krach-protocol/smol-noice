@@ -40,7 +40,7 @@
 
 #include "cbor.h"
 
-
+#define NVS_ERROR_CHECK(fun) if((err = fun) != ESP_OK){ESP_LOGE("main","Error reading NVS: %s",esp_err_to_name(err));}
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
@@ -206,9 +206,16 @@ void app_main(void)
 
    
     //Get Certs from NVS
-    sn_getClientCert(&clientCertBuffer,&clientCertLen);
-    sn_getPrivateKey(&clientPrivateKeyBuffer,&clientPrivateKeyLen);
-    sn_getRootCert(&rootCertbuffer,&rootCertLen);
+    //if((err = fun) != ESP_OK){ESP_LOGE("main","Error reading NVS: %s",esp_err_to_name(err));}
+    
+    NVS_ERROR_CHECK(sn_getClientCert(&clientCertBuffer,&clientCertLen));
+    ESP_LOGI("main","Got clientCert with length: %d",clientCertLen);
+
+    NVS_ERROR_CHECK(sn_getPrivateKey(&clientPrivateKeyBuffer,&clientPrivateKeyLen));
+    ESP_LOGI("main","Got clientKey with length: %d",clientPrivateKeyLen);
+
+    NVS_ERROR_CHECK(sn_getRootCert(&rootCertbuffer,&rootCertLen));
+     ESP_LOGI("main","Got rootCert with length: %d",rootCertLen);
 
     //Setup smol-noice
     smolNoiceSetHost(testConn,hostIP,hostPort);
@@ -220,7 +227,9 @@ void app_main(void)
 
      //Start application
     smolNoiceStart(testConn);
-    while(smolNoiceReadyForTransport(testConn) != SC_OK);
+    while(smolNoiceReadyForTransport(testConn) != SC_OK){
+        vTaskDelay(100/portTICK_PERIOD_MS);
+    }
 
     
     while(1){

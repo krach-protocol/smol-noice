@@ -7,6 +7,10 @@
 #include "smol-noice-internal.h"
 #include "port.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+
 
 
 void* runnerTask(void* arg);
@@ -54,7 +58,7 @@ void* runnerTask(void* arg){
     sn_msg_t networkMsg = {0};
     printf("Starting main loop\n");
     while(run){
-        //sleep_ms(20);
+        vTaskDelay(10); 
         switch(taskData->handShakeStep){
             case INIT_NETWORK:
                 printf("State: INIT NETWORK\n");

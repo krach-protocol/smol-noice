@@ -37,13 +37,25 @@ esp_err_t sn_getRootCert(uint8_t** rootCert, uint8_t* certLen){
     return readByKeyBin("rootCert",rootCert,certLen,"certs");
 }
 
+esp_err_t setWifiPassword(char* wifiPassword){
+    return writeByKey("wifiPassword",wifiPassword,"deviceData");
+}
+
 esp_err_t getWifiPassword(char** wifiPassword){
      return readByKey("wifiPassword",wifiPassword,"deviceData");
 }
 
+esp_err_t setWifiSSID(char* ssid){
+        return writeByKey("ssid",ssid,"deviceData");
+}
+
+
 esp_err_t getWifiSSID(char** ssid){
      return readByKey("ssid",ssid,"deviceData");
 }
+
+
+
 
 
 

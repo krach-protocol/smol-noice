@@ -2,6 +2,7 @@
 
 #include "argtable3/argtable3.h"
 #include "esp_console.h"
+#include "nvs-cl.h"
 
 static struct {
     struct arg_str *ssid;
@@ -17,12 +18,12 @@ static int connect(int argc, char **argv)
         return 1;
     }
     
-    err = clWifiSetCredentials(setWifi_args.ssid->sval[0],setWifi_args.password->sval[0]);
-    if(err != ESP_OK){
-        return 1;
-    } else {
-        return 0;
-    }
+    //err = clWifiSetCredentials(setWifi_args.ssid->sval[0],setWifi_args.password->sval[0]);
+    if(setWifiSSID(setWifi_args.ssid->sval[0]) != ESP_OK) return 1;
+    if(setWifiPassword(setWifi_args.password->sval[0]) != ESP_OK) return 1;
+
+
+    return 0;
 }
 void register_SetWifi(void)
 {

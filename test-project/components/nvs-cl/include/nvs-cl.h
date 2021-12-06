@@ -12,6 +12,10 @@ esp_err_t sn_getPrivateKey(uint8_t** privateKey,uint8_t* keyLen);
 esp_err_t getWifiPassword(char** wifiPassword);
 esp_err_t getWifiSSID(char** ssid);
 
+esp_err_t setWifiPassword(char* wifiPassword);
+esp_err_t setWifiSSID(char* ssid);
+
+
 void register_NVScl();
 
 #endif

@@ -17,6 +17,9 @@ sn_queue_err_t QueueReceive(sn_msg_t *rxMsg);
 sn_queue_err_t QueueTransmit(sn_msg_t *txMsg);
 */
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #include "port.h"
 #include <string.h>
 #include <stdio.h>
@@ -84,7 +87,7 @@ void* socketListenerTask(void* args){
     uint16_t totalPaketLength = 0;
     uint8_t lengthOffset = 0;
     while(1){
-
+        vTaskDelay(10); 
         switch(readState){
             case READ_LENGTH:
                 if(smolNoice->handShakeStep != DO_TRANSPORT){

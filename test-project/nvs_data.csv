@@ -1,5 +1,8 @@
 key,type,encoding,value
-storage,namespace,, 
+certs,namespace,, 
 privateKey,file,binary,certs/client.key
 clientCert,file,binary,certs/client.smolcert
 rootCert,file,binary,certs/root.smolcert
+device_data,namespace,,
+wifiPassword,data,string,""
+ssid,data,string,""
