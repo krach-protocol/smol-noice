@@ -118,10 +118,11 @@ esp_err_t readByKeyBin(char* key, uint8_t** data, uint8_t* len,char* namespace){
     }
 
     err = nvs_get_blob(dataHandle, key, NULL, &requiredSize);
+    ESP_LOGI(TAG,"required size for NVS bin is %d",requiredSize);
     if(err == ESP_ERR_NVS_NOT_FOUND) return err;
    
-   
     *data = (uint8_t*)malloc(requiredSize);
+    *len = requiredSize;
     err = nvs_get_blob(dataHandle, key, *data, &requiredSize);
 
     nvs_close(dataHandle);
