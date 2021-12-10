@@ -48,7 +48,7 @@ EventGroupHandle_t s_wifi_event_group;
 
 #define HOST_URL "citynode.ingress.connctd.io"
 
-
+const char TAG[] = "main";
 sc_err_t clientCb(uint8_t* data, uint16_t len);
 sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert);
 void parseMessage(uint8_t* data, uint16_t len);
@@ -84,6 +84,7 @@ static bool waitingForData = false;
 
 sc_err_t clientCb(uint8_t* data, uint16_t len){
     size_t offset = 0;
+    ESP_LOGI("smolClientCb","Got data");
     if(!lengthReceived) {
         if(len>1) {
             expectedMsgLen = readUint16(data);
@@ -118,7 +119,9 @@ void parseMessage(uint8_t* data, uint16_t len) {
     CborParser parser;
     CborValue it;
     CborError err = cbor_parser_init(data, (size_t)len, 0, &parser, &it);
+    ESP_LOGI("cbor:","Got message");
     if(err != CborNoError) {
+        ESP_LOGE("cbor:","Error init CBOR");
         // TODO log this error, probably close connection and reconnect
         return;
     }
@@ -128,6 +131,7 @@ void parseMessage(uint8_t* data, uint16_t len) {
         // Find the key 'command-name' and get a pointer to its value
         err = cbor_value_map_find_value(&it, "command-name", &val);
         if(err != CborNoError) {
+            ESP_LOGE("cbor:","Error parsing CBOR map");
             // TODO log error etc.
             return;
         }
@@ -139,6 +143,7 @@ void parseMessage(uint8_t* data, uint16_t len) {
             return;
         }
         if(isOpen) {
+            ESP_LOGI("cbor:","Opening Lock");
             // TODO open lock
         }
     }
@@ -147,9 +152,9 @@ void parseMessage(uint8_t* data, uint16_t len) {
 
 
 sc_err_t remoteCertCb(uint8_t* data, uint8_t len,smolcert_t* remoteCert){
-    for(uint8_t idx = 0; idx < len; idx++){
-        printf("%c",data[idx]);
-    }
+    printf("Remote Server Cert:\n");
+    //ESP_LOG_BUFFER_HEXDUMP(TAG,data,len,ESP_LOG_INFO);
+    printf("\n");
     return SC_OK;
 }
 
@@ -202,6 +207,7 @@ void app_main(void)
         dns_gethostbyname(hostURL, &ip_Addr, dns_found_cb, &hostIP);
     }
     ESP_LOGI("main","IP Adress for %s is %s",hostURL,hostIP);
+    //sprintf(hostIP,"192.168.1.234"); //Test connection
 
 
    
@@ -235,8 +241,8 @@ void app_main(void)
     while(1){
         vTaskDelay(1000/portTICK_PERIOD_MS);
         pdx++;
-        ESP_LOGI("main","Sending %d \n",pdx);
-        smolNoiceSendData(testConn,1,&pdx);
+        //printf("Waiting... %d\r",pdx);
+        //smolNoiceSendData(testConn,1,&pdx);
     }
 }
 
