@@ -115,7 +115,10 @@ sc_err_t clientCb(uint8_t* data, uint16_t len){
     return SC_OK;
 }
 
+typedef enum {PING,OPEN} cbor_command_t;
+
 void parseMessage(uint8_t* data, uint16_t len) {
+    cbor_command_t command;
     CborParser parser;
     CborValue it;
     CborError err = cbor_parser_init(data, (size_t)len, 0, &parser, &it);
@@ -135,6 +138,8 @@ void parseMessage(uint8_t* data, uint16_t len) {
             // TODO log error etc.
             return;
         }
+
+
         bool isOpen = false;
         // Check that the value is actually euqal to the string 'open'
         err = cbor_value_text_string_equals(&val, "open", &isOpen);
@@ -145,6 +150,13 @@ void parseMessage(uint8_t* data, uint16_t len) {
         if(isOpen) {
             ESP_LOGI("cbor:","Opening Lock");
             // TODO open lock
+        }
+
+        bool isPing = false;
+        err = cbor_value_text_string_equals(&val, "ping", &isOpen);
+
+        if(isPing){
+            ESP_LOGI("cbor:","ping command");
         }
     }
     
