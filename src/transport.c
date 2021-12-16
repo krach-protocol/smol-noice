@@ -60,6 +60,7 @@ sc_err_t decryptTransport(smolNoice_t* smolNoice,sn_buffer_t* paket){
         return SC_ERR;
     }
     paket->msgBuf +=2;
+    paket->msgLen = paket->msgLen - 2 /*krach length prefix*/ - 16 /*mac*/ - paket->msgBuf[0] /*padding length*/ - 1 /* length of padding prefix */;
     SC_ERROR_CHECK(unpadBuffer(paket));
     return SC_OK;
 }
