@@ -1,10 +1,5 @@
 #Name | Type | SubType | Offset | Size | Flags
 #---- | ---- | ------- | ------ | ---- | -----
-otadata,    data,   ota, 0x10000, 8K ,
-phy_init,   data,   phy,        , 4K  ,
-nvs_key,    data,   nvs_keys,   , 4K, 
-nvs,        data,   nvs,        , 1152K , 
-lifeboat,   app,    factory,    , 1M , 
-app_slot_0, app,    ota_0,      , 2M , 
-app_slot_1, app,    ota_1,      , 2M ,  
-logs,       data,   spiffs,     , 1536K , 
+nvs,      data, nvs,     0x9000,  0x6000,
+phy_init, data, phy,     0xf000,  0x1000,
+factory,  app,  factory, 0x10000, 8M,
