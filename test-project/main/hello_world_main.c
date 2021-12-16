@@ -32,11 +32,12 @@
 #include "smol-noice.h"
 #include "sc_packet.h"
 #include "cl-PortOpen.h"
+#include "transport.h"
 
 #include "cbor.h"
 
-#define ESP_WIFI_SSID      "SenseLab-Guest"
-#define ESP_WIFI_PASS      "somepassword"
+#define ESP_WIFI_SSID      "Internet-Of-Shit"
+#define ESP_WIFI_PASS      ""
 #define ESP_MAXIMUM_RETRY  10
 
 #define WIFI_CONNECTED_BIT BIT0
@@ -81,13 +82,14 @@ static bool waitingForData = false;
 
 sc_err_t clientCb(uint8_t* data, uint16_t len){
     size_t offset = 0;
-    ESP_LOGI("smolClientCb","Got data");
+    ESP_LOGI("smolClientCb","Got data. Len %d", len);
     if(!lengthReceived) {
         if(len>1) {
             expectedMsgLen = readUint16(data);
             lengthReceived = true;
             waitingForData = true;
             offset = 2;
+            ESP_LOGI(TAG,"length prefix for cbor received: %d", expectedMsgLen);
         } else {
             // Currently not supported to only partially receive the prefixed length
             // We should cancel and reestablish the connection
@@ -95,13 +97,16 @@ sc_err_t clientCb(uint8_t* data, uint16_t len){
         }
     }
     if(waitingForData) {
+        
         uint8_t* destPtr = msgBuf + receivedLen;
         uint8_t* srcPtr = data + offset;
         memcpy(destPtr, srcPtr, len - offset);
         receivedLen += (len - offset);
+        ESP_LOGI(TAG, "Receiving data we waited for. receivedLen %d expectedLen %d", receivedLen, expectedMsgLen);
     }
     if(receivedLen == expectedMsgLen) {
         // Packet completely received into msgBuf
+        ESP_LOGI(TAG, "Received complete cbor message");
         uint16_t len = receivedLen;
         lengthReceived = false;
         waitingForData = false;
@@ -113,6 +118,7 @@ sc_err_t clientCb(uint8_t* data, uint16_t len){
 }
 
 void tryOpenLock() {
+    ESP_LOGI(TAG, "Opening lock");
     for(uint8_t i = 0; i<20; i++) {
         clPortOpenOpen(i);
     }
@@ -128,7 +134,12 @@ void parseMessage(uint8_t* data, uint16_t len) {
         // TODO log this error, probably close connection and reconnect
         return;
     }
+    ESP_LOGI("cbor:", "Parser initialized");
     if(cbor_value_is_map(&it)) {
+        printHex(data, len);
+        // Ok, we seem to have a super strange buffer corruption at this point
+        // So we just open as soon as we have received a cbor map, even if it is incomplete...
+        tryOpenLock();
         // If we have a map
         CborValue val;
         // Find the key 'command-name' and get a pointer to its value
@@ -138,28 +149,40 @@ void parseMessage(uint8_t* data, uint16_t len) {
             // TODO log error etc.
             return;
         }
-
+        ESP_LOGI("cbor:", "Found command-name key");
 
         bool isOpen = false;
         // Check that the value is actually euqal to the string 'open'
         err = cbor_value_text_string_equals(&val, "open", &isOpen);
         if(err != CborNoError) {
-            // TODO log error etc.
+            ESP_LOGE("cbor:", "Failed to compare command-name value");
             return;
         }
         if(isOpen) {
-            ESP_LOGI("cbor:","Opening Lock");
+            ESP_LOGI("cbor:" ,"Opening Lock");
             tryOpenLock();
+            return;
         }
+        char valBuf[128];
+        size_t valBufLen=128;
+        err = cbor_value_copy_text_string(&val, valBuf, &valBufLen, &val);
+        if (err != CborNoError){
+            ESP_LOGE("cbor:", "Failed to read command-name value");
+        }
+        valBuf[127] = '\0';
+        ESP_LOGI("cbor:", "command-name value: %s", valBuf);
 
         bool isPing = false;
         err = cbor_value_text_string_equals(&val, "ping", &isOpen);
 
         if(isPing){
             ESP_LOGI("cbor:","ping command");
+            return;
         }
+    } else {
+        ESP_LOGW("cbor:", "Received invalid CBOR");
     }
-    
+    ESP_LOGW("cbor:", "we shouldn't be here");
 }
 
 
