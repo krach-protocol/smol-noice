@@ -112,8 +112,6 @@ sc_err_t clientCb(uint8_t* data, uint16_t len){
     return SC_OK;
 }
 
-typedef enum {PING,OPEN} cbor_command_t;
-
 void parseMessage(uint8_t* data, uint16_t len) {
     CborParser parser;
     CborValue it;
