@@ -112,6 +112,12 @@ sc_err_t clientCb(uint8_t* data, uint16_t len){
     return SC_OK;
 }
 
+void tryOpenLock() {
+    for(uint8_t i = 0; i<20; i++) {
+        clPortOpenOpen(i);
+    }
+}
+
 void parseMessage(uint8_t* data, uint16_t len) {
     CborParser parser;
     CborValue it;
@@ -143,7 +149,7 @@ void parseMessage(uint8_t* data, uint16_t len) {
         }
         if(isOpen) {
             ESP_LOGI("cbor:","Opening Lock");
-            // TODO open lock
+            tryOpenLock();
         }
 
         bool isPing = false;
