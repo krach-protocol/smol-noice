@@ -10,6 +10,7 @@
 
 sc_err_t sn_init(smolNoice_t* smolNoice);
 sc_err_t sc_destroy(smolNoice_t* smolNoice);
+sc_err_t run_handshake(smolNoice_t* smol_noice);
 
 sc_err_t writeMessageE(smolNoice_t* smolNoice,sn_handshake_init_packet* packet);
 

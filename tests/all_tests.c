@@ -266,13 +266,13 @@ void test_smolNoice(void){
   smolNoiceTest = smolNoice();
   if(smolNoiceTest == NULL) return; 
 
-  err = smolNoiceSetHost(smolNoiceTest,"127.0.0.1",9095);
+  err = sn_set_host(smolNoiceTest,"127.0.0.1",9095);
   if(err != Sc_No_Error) return;
 
-  err = smolNoiceSetClientCert(smolNoiceTest,clientCertBuffer.msgBuf,clientCertBuffer.msgLen);
+  err = sn_set_client_cert(smolNoiceTest,clientCertBuffer.msgBuf,clientCertBuffer.msgLen);
   if(err != Sc_No_Error) return;
 
-  err = smolNoiceSetClientPrivateKey(smolNoiceTest,privateKeyBuffer);
+  err = sn_set_client_priv_key(smolNoiceTest,privateKeyBuffer);
   if(err != Sc_No_Error) return;
 
   err = smolNoiceSetTransportCallback(smolNoiceTest,testTransportCallBack);

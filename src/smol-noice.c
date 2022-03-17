@@ -2,6 +2,7 @@
 
 #include "statemachine.h"
 #include "transport.h"
+#include "handshake.h"
 
 #include "sn_msg.h"
 
@@ -21,28 +22,20 @@ smolNoice_t* smolNoice(void){
     return smolNoice;
 }
 
-sn_err_t smolNoiceConnect(smolNoice_t* smolNoice) {
-    SN_ERROR_CHECK(sn_init(smolNoice));
-
+sn_err_t sn_connect(smolNoice_t* smol_noice) {
+    SN_ERROR_CHECK(sn_init(smol_noice));
+    SN_ERROR_CHECK(run_handshake(smol_noice));
     return SC_OK;
 }
 
-sc_err_t smolNoiceStart(smolNoice_t* smolNoice){
-    sc_err_t err = SC_OK;
-
-    SC_ERROR_CHECK(sn_init(smolNoice));
-
-    return SC_OK;
-}
-
-sc_err_t smolNoiceSetHost(smolNoice_t* smolNoice,const char* hostAddress,uint16_t hostPort){
+sc_err_t sn_set_host(smolNoice_t* smolNoice,const char* hostAddress,uint16_t hostPort){
     smolNoice->hostPort = hostPort;
     smolNoice->hostAddress = strdup(hostAddress);
 
     return SC_OK;
 }
 
-sc_err_t smolNoiceSetClientCert(smolNoice_t* smolNoice, uint8_t* clientCert, uint8_t clientCertLen){
+sc_err_t sn_set_client_cert(smolNoice_t* smolNoice, uint8_t* clientCert, uint8_t clientCertLen){
     if(clientCert == NULL) return SC_ERR;
     
     smolNoice->clientCert = clientCert;
@@ -50,7 +43,7 @@ sc_err_t smolNoiceSetClientCert(smolNoice_t* smolNoice, uint8_t* clientCert, uin
     return SC_OK;
 }
 
-sc_err_t smolNoiceSetClientPrivateKey(smolNoice_t* smolNoice,uint8_t* privateKey){
+sc_err_t sn_set_client_priv_key(smolNoice_t* smolNoice,uint8_t* privateKey){
     memcpy(smolNoice->clientPrivateKey,privateKey,32);
 
     return SC_OK;
@@ -75,13 +68,8 @@ sc_err_t smolNoiceSendData(smolNoice_t* smolNoice,uint8_t dataLen,uint8_t* data)
 
     return SC_OK;
 }
-sc_err_t smolNoiceSetTransportCallback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(uint8_t*,uint8_t)){
-    if(dataCb == NULL) return SC_ERR;
-    smolNoice->transportCallback = dataCb;
 
-    return SC_OK;
-}
-sc_err_t smolNoiceSetRemoteCertCallback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(uint8_t*,uint8_t,smolcert_t*)){
+sc_err_t sn_set_remote_cert_callback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(uint8_t*,uint8_t,smolcert_t*)){
     if(dataCb == NULL) return SC_ERR;
     smolNoice->certCallback = dataCb;
     return SC_OK;
