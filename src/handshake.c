@@ -126,7 +126,7 @@ sc_err_t writeMessageS(smolNoice_t* smolNoice, sn_handshake_fin_packet* packet){
     certBuffer.msgBuf = (uint8_t*)calloc(certBuffer.msgLen,sizeof(uint8_t));
     memcpy(certBuffer.msgBuf,smolNoice->clientCert,certBuffer.msgLen);
 
-    SC_ERROR_CHECK(padBuffer(&certBuffer));
+    SC_ERROR_CHECK(sn_buffer_pad(&certBuffer));
     
     noise_buffer_set_inout(buff,certBuffer.msgBuf,certBuffer.msgLen-16,certBuffer.msgLen);
     

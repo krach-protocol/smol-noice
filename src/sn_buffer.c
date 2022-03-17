@@ -119,16 +119,26 @@ void sn_buffer_write_lv_block(sn_buffert* buf, uint8_t* src, uint16_t src_len) {
     buf->idx += src_len;
 }
 
-sc_err_t padBuffer(sn_buffer_t* buf){
+sc_err_t sn_buffer_pad(sn_buffer_t* buf){
     uint8_t bytes_to_pad = (uint8_t)(buf->len+1)%16;
     size_t new_len = buf->len + 1 /*pad header */ + bytes_to_pad;
-    sn_buffer_ensure_cap(buf, new_len);
-    // TODO this needs to be optimized. Move every element one to the right
-    for(size_t i = buf->len+1; i>0; i--) {
-        buf->idx[i] = buf->idx[i-1];
+    if(buf->_orig_ptr < buf->idx) {
+        // We have space in front of our current pointer, we will use this
+        sn_buffer_ensure_cap(buf, new_len - 1);
+        // Zero out the padded bytes;
+        buf->idx -= 1;
+
+    } else {
+        sn_buffer_ensure_cap(buf, new_len);
+        for(size_t i = buf->len+1; i>0; i--) {
+            buf->idx[i] = buf->idx[i-1];
+        }
     }
     buf->idx[0] = bytes_to_pad;
-
+    for(size_t i = new_len-1; i>(new_len - bytes_to_pad); i--) {
+        buf->idx[i] = 0;
+    }
+    buf->len = new_len;
     return SC_OK;
 
 }

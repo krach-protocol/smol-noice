@@ -122,7 +122,7 @@ sn_err_t sn_buffer_read_uint16(sn_buffer_t* buf, uint16_t* dest);
 void sn_buffer_write_lv_block(sn_buffert* buf, uint8_t* src, uint16_t src_len);
 
 //Padding
-sn_err_t padBuffer(sn_buffer_t*);
+sn_err_t sn_buffer_pad(sn_buffer_t*);
 sn_err_t unpadBuffer(sn_buffer_t*);
 
 

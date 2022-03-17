@@ -44,7 +44,7 @@ sc_err_t encryptAndSendTransport(smolNoice_t* smolNoice,sn_buffer_t* paket){
     //printf("Padding... \n");
     //printHex(paket->msgBuf,paket->msgLen);
    
-    SC_ERROR_CHECK(padBuffer(paket));
+    SC_ERROR_CHECK(sn_buffer_pad(paket));
     //printf("Encrypting... \n");
     //printHex(paket->msgBuf,paket->msgLen);
 
