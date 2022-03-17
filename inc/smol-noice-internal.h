@@ -25,6 +25,6 @@ typedef struct smolNoice
     NoiseHandshakeState *handshakeState;
     NoiseCipherState *rxCipher;
     NoiseCipherState *txCipher;
-} smolNoice_s,smolNoice_t;
+} smolNoice_t;
 
 #endif

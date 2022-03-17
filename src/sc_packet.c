@@ -1,5 +1,6 @@
 #include "sc_packet.h"
-#include "sc_err.h"
+#include "sn_err.h"
+#include "sn_msg.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -8,16 +9,6 @@
  * for non-humans:  https://github.com/connctd/krach/blob/v2/refactor/spec/protocol.specs
  *
  * */
-
-// length in bytes
-#define SC_PACKET_LEN_LEN          2
-#define SC_ID_LENGTH_LEN           2
-#define SC_VERSION_LEN             1
-#define SC_TYPE_LEN                1
-#define SC_EPHEMERAL_PUB_KEY_LEN   32
-#define SC_MAX_PACKET_LEN          512 //set at runtime
-
-#define SC_VERSION                 0x01
 
 void printHex(uint8_t*,uint8_t);
 void printHex(uint8_t* key,uint8_t keyLen){
@@ -37,7 +28,7 @@ uint16_t readUint16(uint8_t* buf) {
     return result;
 }
 
-void writeUint16(uint8_t* buf, uint16_t val) {
+void sn_write_uint16(uint8_t* buf, uint16_t val) {
     buf[0] = (val & 0x00FF);
     buf[1] = (val & 0xFF00) >> 8;
 }
@@ -78,85 +69,69 @@ sc_err_t writeLVBlock(uint8_t *buf, uint16_t bufLen, uint8_t *data, uint16_t dat
  * future changes like expanding field sizes and for better readability
  * */
 
-sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg){
-    uint16_t packetLen;
-    uint8_t version = SC_VERSION;
-    uint8_t* writePtr;
-    if(packet->HandshakeType != HANDSHAKE_INIT) return SC_PAKET_ERR;
+sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t* buf){
+    sn_buffer_reset(buf);
+    size_t packetLen;
+    uint8_t version = SN_VERSION;
+    packet->HandshakeType = HANDSHAKE_INIT // Always set the handshake type, doesn't hurt
 
-    packetLen  =  SC_EPHEMERAL_PUB_KEY_LEN; // We put version and type at the beginning and only count the bytes following that
+    packetLen  =  SN_EPHEMERAL_PUB_KEY_LEN; // We put version and type at the beginning and only count the bytes following that
     
-    msg->msgLen = (size_t)packetLen + SC_PACKET_LEN_LEN + SC_VERSION_LEN + SC_TYPE_LEN;
-    msg->msgBuf = (uint8_t*)calloc(1,msg->msgLen);
-    writePtr = msg->msgBuf;
+    msg->msgLen = (size_t)packetLen + SN_PACKET_LEN_LEN + SN_VERSION_LEN + SN_TYPE_LEN;
+    sn_buffer_ensure_cap(buf, packetLen);
 
-    memcpy(writePtr,&version, SC_VERSION_LEN);
-    writePtr++;
-    memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
-    writePtr += SC_TYPE_LEN;
-    //Write packet length to buffer and pay due to endianess
+    sn_buffer_write(buf, &version, SN_VERSION_LEN);
+    sn_buffer_write(buf, &(packet->HandshakeType), SN_TYPE_LEN);
     
-    *writePtr = (packetLen&0x00FF);
-    writePtr++;
-    *writePtr = (packetLen&0xFF00)>>8;
-    writePtr++;
-    
-
-    memcpy(writePtr,packet->ephemeralPubKey,SC_EPHEMERAL_PUB_KEY_LEN);
+    sn_buffer_write_uint16(buf, (uint16_t)packetLen);
+    sn_buffer_write(buf, packet->ephemeralPubKey, SN_EPHEMERAL_PUB_KEY_LEN);
+    sn_buffer_rewind(buf);
 
     return SC_OK;
 }
 
-sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet,  sn_msg_t *msg){
+sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buffer_t* buf){
     uint16_t readBytes = 0;
     uint8_t version = 0;
-    uint16_t packetLen = 0;
+    uint16_t packet_len = 0;
     uint8_t* readPtr = msg->msgBuf;
     sc_err_t err = SC_OK;
-  
-    
-    memcpy((uint8_t*)&(packet->HandshakeType), readPtr,SC_TYPE_LEN);
+    if(( err = sn_buffer_read(buf, (uint8_t*)&(packet->HandshakeType), SC_TYPE_LEN) != SC_OK) {
+        return err;
+    }
     if (packet->HandshakeType != HANDSHAKE_RESPONSE) {
         return SC_PAKET_ERR;
     }
 
-    readPtr += SC_TYPE_LEN;
-    readBytes += SC_TYPE_LEN;
-    if((readBytes + SC_PACKET_LEN_LEN + SC_TYPE_LEN) > SC_MAX_PACKET_LEN) return SC_PAKET_ERR;
-    
-    packetLen = readUint16(readPtr);
-   
-    readPtr += SC_PACKET_LEN_LEN;
-    readBytes += SC_PACKET_LEN_LEN;
-    if(readBytes >= (packetLen+SC_TYPE_LEN + SC_PACKET_LEN_LEN)) return SC_PAKET_ERR;
-    
-
-
-    packet->ephemeralPubKey = (uint8_t*)calloc(SC_EPHEMERAL_PUB_KEY_LEN,sizeof(uint8_t));
-    memcpy((uint8_t*)(packet->ephemeralPubKey),readPtr,SC_EPHEMERAL_PUB_KEY_LEN);
-    readPtr += SC_EPHEMERAL_PUB_KEY_LEN;
-    readBytes += SC_EPHEMERAL_PUB_KEY_LEN;
-
-    err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), &packet->smolcert, &packet->smolcertLen);
-    if(err != SC_OK) {
+    if((err = sn_buffer_read_uint16(buf, &packet_len)) != SC_OK) {
         return err;
     }
-    readPtr += (packet->smolcertLen+2);
-    readBytes += (packet->smolcertLen+2);
+    if(packet_len != buf->len) {
+        return SC_PAKET_ERR;
+    }
 
-    err = readLVBlock(readPtr, packetLen-(readBytes-SC_TYPE_LEN-SC_PACKET_LEN_LEN), &packet->payload, &packet->payloadLen);
-    if(err != SC_OK) {
+    packet->ephemeralPubKey = (uint8_t*)calloc(SN_EPHEMERAL_PUB_KEY_LEN,sizeof(uint8_t));
+    if((err = sn_buffer_read(buf, (uint8_t*)(packet->ephemeralPubkey), SN_EPHEMERAL_PUB_KEY_LEN)) != SC_OK ) {
         return err;
     }
-    readPtr += (packet->payloadLen+2);
-    readBytes += (packet->payloadLen+2);
-    
+    packet->smolcertLen = sn_buffer_peek_lv_len(buf);
+    packet->smolcert = (uint8_t*)calloc(1, packet->smolcertLen);
+
+    if((err = sn_buffer_read_lv_block(buf, packet->smolcert, packet->smolcertLen)) != SC_OK) {
+        return err;
+    }
+
+    packet->payloadLen = sn_buffer_peek_lv_len(buf);
+    packet->payload = (uint8_t*)calloc(1, packet->payloadLen);
+    if((err = sn_buffer_read_lv_block(buf, packet->payload, packet->payloadLen)) != SC_OK) {
+        return err;
+    }
     
     return err;
 }
 
 
-sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet , sn_msg_t *msg){
+sc_err_t packHandshakeFin(sn_handshake_fin_packet* packet , sn_msg_t *msg){
     uint16_t packetLen;
     uint8_t version = SC_VERSION;
     uint8_t* writePtr;

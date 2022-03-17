@@ -1,7 +1,7 @@
 #ifndef _SMOL_NOICE_H_
 #define _SMOL_NOICE_H_
 
-#include "sc_err.h"
+#include "sn_err.h"
 #include "smolcert.h"
 typedef struct smolNoice smolNoice_t;
 

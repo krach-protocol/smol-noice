@@ -11,7 +11,7 @@
 
 void* runnerTask(void* arg);
 
-sc_err_t sc_init(smolNoice_t* smolNoice)
+sc_err_t sn_init(smolNoice_t* smolNoice)
     {
     sc_err_t sc_err;
     NoiseDHState* localEphemeralKeypair = NULL; 
@@ -47,9 +47,9 @@ void* runnerTask(void* arg){
     NoiseHandshakeState *handshakeState = taskData->handshakeState;
     NoiseCipherState *rxCipher=NULL;
 
-    sc_handshakeInitPacket      initPaket={0};
+    sn_handshake_init_packet      initPaket={0};
     sc_handshakeResponsePacket  responsePaket={0};
-    sc_handshakeFinPacket       finPaket={0};
+    sn_handshake_fin_packet       finPaket={0};
 
     sn_msg_t networkMsg = {0};
     printf("Starting main loop\n");

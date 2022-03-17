@@ -29,7 +29,77 @@
  * 
 */
 
-sc_err_t writeMessageE(smolNoice_t* smolNoice,sc_handshakeInitPacket* packet){
+sc_err_t run_handshake(smolNoice_t* smol_noice) {
+    sn_handshake_init_packet init_pkt;
+    sn_buffer_t* buf = sn_buffer_new(512);
+    sc_err_t err = SC_OK;
+    if((err = writeMessageE(smolNoice, &init_pkt)) != SC_OK ){
+        sn_buffer_free(buf);
+        return err;
+    }
+    if((err = pack_handshake_init(init_pkt, buf)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
+    if((err = sn_send_buffer(smol_noice->socket, buf)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
+    sn_buffer_reset(buf);
+
+    if(( err = sn_read_from_socket(smol_noice->socket, buf, 3)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    } // We are expecting to read 3 bytes, type and length
+    if(buf->idx[0] != HANDSHAKE_RESPONSE) {
+        sn_buffer_free(buf);
+        return Sc_Validation_Error;
+    }
+    buf->idx++;
+    uint16_t pkt_len = readUint16(buf->idx);
+    buf->idx += 2;
+    buf->len = 0;
+
+    if(( err = sn_read_from_socket(smol_noice->socket, buf, pkt_len)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
+    sn_buffer_rewind(buf);
+
+    sn_handshake_response_packet rsp_pkt;
+    if(( err = unpack_handshake_response(&rsp_pkt, buf)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
+    sn_buffer_reset(buf);
+    if(( err = readMessageE_DHEE_S_DHES(smol_noice, &rsp_pkt)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
+
+    sn_handshake_fin_packet fin_pkt;
+    if(( err = writeMessageS_DHSE(smol_noice, &fin_pkt)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
+    if((err = pack_handshake_fin(&fin_pkt, buf)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
+    if((err = sn_send_buffer(smol_noice->socket, buf)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
+    if((err = sn_split_cipher(smol_noice)) != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
+
+    sn_buffer_free(buf);
+    return err;
+}
+
+sc_err_t writeMessageE(smolNoice_t* smolNoice, sn_handshake_init_packet* packet){
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
     NoiseDHState *dhState;   
     uint8_t pubKey[PUBKEY_LEN];
@@ -46,7 +116,7 @@ sc_err_t writeMessageE(smolNoice_t* smolNoice,sc_handshakeInitPacket* packet){
    	return SC_OK;
 }
 
-sc_err_t writeMessageS(smolNoice_t* smolNoice, sc_handshakeFinPacket* packet){
+sc_err_t writeMessageS(smolNoice_t* smolNoice, sn_handshake_fin_packet* packet){
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
     NoiseBuffer buff;
     noise_buffer_init(buff);
@@ -75,7 +145,7 @@ sc_err_t writeMessageS(smolNoice_t* smolNoice, sc_handshakeFinPacket* packet){
     return SC_OK;
 }
 
-sc_err_t writeMessageDHSE(smolNoice_t* smolNoice, sc_handshakeFinPacket* packet){
+sc_err_t writeMessageDHSE(smolNoice_t* smolNoice, sn_handshake_fin_packet* packet){
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
     NoiseDHState *localStaticKeyPair = smolNoice->handshakeState->dh_local_static;
     NoiseDHState *remoteEphemeralKeyPair = smolNoice->handshakeState->dh_remote_ephemeral;
@@ -100,7 +170,7 @@ sc_err_t writeMessageDHSE(smolNoice_t* smolNoice, sc_handshakeFinPacket* packet)
     return SC_OK;
 }
 
-sc_err_t writeMessageS_DHSE(smolNoice_t* smolNoice, sc_handshakeFinPacket* packet){
+sc_err_t writeMessageS_DHSE(smolNoice_t* smolNoice, sn_handshake_fin_packet* packet){
     SC_ERROR_CHECK(writeMessageS(smolNoice, packet));
     SC_ERROR_CHECK(writeMessageDHSE(smolNoice, packet));
     
@@ -110,7 +180,7 @@ sc_err_t writeMessageS_DHSE(smolNoice_t* smolNoice, sc_handshakeFinPacket* packe
 
 
 // Read operations
-sc_err_t readMessageE(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet){    
+sc_err_t readMessageE(smolNoice_t* smolNoice, sn_handshake_response_packet *packet){    
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
     NoiseDHState *remoteEphemeralKeypair = smolNoice->handshakeState->dh_remote_ephemeral;
 
@@ -123,7 +193,7 @@ sc_err_t readMessageE(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet
     return SC_OK;
 }
 
-sc_err_t readMessageDHEE(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet){
+sc_err_t readMessageDHEE(smolNoice_t* smolNoice, sn_handshake_response_packet *packet){
     NoiseDHState *localEphemeralKeypair = smolNoice->handshakeState->dh_local_ephemeral;
     NoiseDHState *remoteEphemeralKeypair = smolNoice->handshakeState->dh_remote_ephemeral;
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
@@ -137,7 +207,7 @@ sc_err_t readMessageDHEE(smolNoice_t* smolNoice, sc_handshakeResponsePacket *pac
     return SC_OK;
 }
 
-sc_err_t readMessageS(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet){
+sc_err_t readMessageS(smolNoice_t* smolNoice, sn_handshake_response_packet *packet){
      NoiseDHState* remoteStaticKeypair = NULL;
      uint8_t remotePubKey[32];
      smolcert_t remoteCert = {0};
@@ -185,7 +255,7 @@ sc_err_t readMessageS(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet
    return SC_OK;
 }
 
-sc_err_t readMessageDHES(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet){
+sc_err_t readMessageDHES(smolNoice_t* smolNoice, sn_handshake_response_packet *packet){
     NoiseDHState *remoteStaticKeypair = smolNoice->handshakeState->dh_remote_static; 
     NoiseDHState *localEphemeralKeypair = smolNoice->handshakeState->dh_local_ephemeral; 
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
@@ -197,7 +267,7 @@ sc_err_t readMessageDHES(smolNoice_t* smolNoice, sc_handshakeResponsePacket *pac
 
     return SC_OK;
 }
-sc_err_t readMessageE_DHEE_S_DHES(smolNoice_t* smolNoice, sc_handshakeResponsePacket *packet){
+sc_err_t readMessageE_DHEE_S_DHES(smolNoice_t* smolNoice, sc_handshake_response_packet *packet){
     
     SC_ERROR_CHECK(readMessageE(smolNoice, packet));
     SC_ERROR_CHECK(readMessageDHEE(smolNoice, packet));
@@ -228,11 +298,6 @@ void printCryptoData(NoiseHandshakeState *handshakeState){
 }
 */
 
-sc_err_t sendTransport(sn_buffer_t txData);
-sc_err_t sendTransport(sn_buffer_t txData){
-
-    return SC_OK;
-}
 /*
 sc_err_t unpadBuffer(sn_buffer_t* buffer){
     uint8_t bufferLen = buffer->msgLen;
@@ -246,7 +311,7 @@ sc_err_t unpadBuffer(sn_buffer_t* buffer){
     return SC_OK;
 }
 */
-sc_err_t splitCipher(smolNoice_t* smolNoice){
+sc_err_t sn_split_cipher(smolNoice_t* smolNoice){
      //split symmetric state for encrypt(first cipher) and decrypt(second cipher)
     //see: http://rweather.github.io/noise-c/group__symmetricstate.html#gadf7cef60a64aef703add9b093c3b6c63
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;

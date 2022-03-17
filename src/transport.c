@@ -1,11 +1,40 @@
 #include "transport.h"
 #include "port.h"
 #include "smol-noice-internal.h"
-#include "sc_err.h"
+#include "sn_err.h"
+#include "sn_msg.h"
 #include <stdio.h>
+#include <sys/socket.h>
 
 #include <stdlib.h>
 #include <string.h>
+
+/* This simply sends a complete buffer to the socket. No length prefixing or anything, but it ensures the
+   the complete buffer is written */
+sn_err_t sn_send_buffer(size_t socket, sn_buffer_t* buf) {
+    size_t sent_bytes = 0;
+    while(sent_bytes < buf->len) {
+        size_t n = send(socket, buf->idx + sent_bytes, buf->len - sent_bytes, 0);
+        if(n < 0) {
+            return SN_NET_ERR;
+        }
+        sent_bytes += n;
+    }
+    return SC_OK;
+}
+
+sn_err_t sn_read_from_socket(size_t socket, sn_buffer_t* buf, size_t expected_length) {
+    sn_buffer_ensure_cap(buf, expected_length);
+    size_t bytes_read = 0;
+    while(bytes_read < expected_length) {
+        size_t n = recv(socket, buf->idx + bytes_read, expected_length - bytes_read, 0);
+        if(n < 0) {
+            return SN_NET_ERR;
+        }
+        bytes_read += n;
+    }
+    return SC_OK;
+}
 
 
 sc_err_t encryptAndSendTransport(smolNoice_t* smolNoice,sn_buffer_t* paket){

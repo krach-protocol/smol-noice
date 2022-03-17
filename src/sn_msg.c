@@ -5,7 +5,7 @@
 
 sn_buffer_t* sn_buffer_new(size_t _cap){
     sn_buffer_t* buf = (sn_buffer_t*)malloc(sizeof(sn_buffer_t));
-    buf->_orig_ptr = (uint8_t*)malloc(_cap);
+    buf->_orig_ptr = (uint8_t*)calloc(1, _cap);
     buf->idx = buf->_orig_ptr;
     buf->_cap = _cap;
     buf->len = 0;
@@ -20,6 +20,11 @@ void sn_buffer_free(sn_buffer_t* buf) {
 void sn_buffer_reset(sn_buffer_t* buf) {
     buf->idx = buf->_orig_ptr;
     buf->len = 0;
+}
+
+void sn_buffer_rewind(sn_buffer_t *buf) {
+    buf->len = buf->idx - buf->_orig_ptr + buf->len;
+    buf->idx = buf->_orig_ptr;
 }
 
 void sn_buffer_resize(sn_buffer_t* buf, size_t new_len) {
@@ -51,6 +56,60 @@ void sn_buffer_ensure_cap(sn_buffer_t *buf, size_t expected_cap) {
         size_t new_cap = buf->_cap + cap_needed;
         sn_buffer_resize(buf, new_cap);
     }
+}
+
+void sn_buffer_write(sn_buffer_t *buf, uint8_t* data, size_t data_len) {
+    sn_buffer_ensure_cap(buf, data_len);
+    memcpy(buf->idx, data, len);
+    buf->idx += len;
+    buf->len = 0;
+}
+
+void sn_buffer_write_uint16(sn_buffer_t* buf, uint16_t val) {
+    sn_buffer_ensure_cap(buf, 2);
+    buf->idx[0] = (val & 0x00FF);
+    buf->idx[1] = (val & 0xFF00) >> 8;
+    buf->idx += 2;
+}
+
+uint16_t sn_buffer_peek_lv_len(sn_buffer_t* buf) {
+    uint16_t result = 0;
+    result += buf->idx[0] | (buf->idx[1] << 8);
+    return result;
+}
+
+sn_err_t sn_buffer_read_lv_block(sn_buffer_t* buf, uint8_t* dst, size_t dst_len) {
+    uint16_t block_len = sn_buffer_peek_lv_len(buf);
+    if(block_len > dst_len) {
+        return SC_PAKET_ERR;
+    }
+    if(block_len+2 > buf->len) {
+        return SC_PAKET_ERR;
+    }
+    memcpy(buf->idx+2, dst, block_len);
+    buf->idx += (size_t)(block_len + 2);
+    buf->len -= (block_len + 2);
+    return SC_OK;
+}
+
+sn_err_t sn_buffer_read(sn_bufffer_t* buf, uint8_t* dest, size_t len) {
+    if(buf->len < len) {
+        return SC_PAKET_ERR;
+    }
+    memcpy(buf->idx, dest, len);
+    buf->idx += len;
+    buf->len -= len;
+    return SC_OK;
+}
+
+sn_err_t sn_buffer_read_uint16(sn_buffer_t* buf, uint16_t* dest) {
+    if(buf->len < 2) {
+        return SC_PAKET_ERR;
+    }
+    *dest = sn_buffer_peek_lv_len(buf);
+    buf->idx += 2;
+    buf->len -= 2;
+    return SC_OK;
 }
 
 sc_err_t padBuffer(sn_buffer_t* buf){

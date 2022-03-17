@@ -16,30 +16,21 @@
 sc_err_t defaultCertCallback(uint8_t*,uint8_t,smolcert_t*);
 
 smolNoice_t* smolNoice(void){
-    smolNoice_t *smolNoice = (smolNoice_t*)calloc(1,sizeof(smolNoice_s));
+    smolNoice_t *smolNoice = (smolNoice_t*)calloc(1,sizeof(smolNoice_t));
     smolNoice->certCallback = defaultCertCallback;
-
-    if((smolNoice->rxQueue = initQueue(QUEUE_LEN)) == NULL){
-       printf(" Error : Init Queue Failed \n");   
-    }
-    smolNoice->rxQueueLock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-    pthread_mutex_init(smolNoice->rxQueueLock, NULL);
-
-    if((smolNoice->txQueue = initQueue(QUEUE_LEN)) == NULL){
-       printf(" Error : Init Queue Failed \n");   
-    }
-    smolNoice->txQueue->queueName = strdup("TxQueue");
-    smolNoice->rxQueue->queueName = strdup("RxQueue");
-    smolNoice->txQueueLock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-    pthread_mutex_init(smolNoice->txQueueLock, NULL);
-
     return smolNoice;
+}
+
+sn_err_t smolNoiceConnect(smolNoice_t* smolNoice) {
+    SN_ERROR_CHECK(sn_init(smolNoice));
+
+    return SC_OK;
 }
 
 sc_err_t smolNoiceStart(smolNoice_t* smolNoice){
     sc_err_t err = SC_OK;
 
-    SC_ERROR_CHECK(sc_init(smolNoice));
+    SC_ERROR_CHECK(sn_init(smolNoice));
 
     return SC_OK;
 }

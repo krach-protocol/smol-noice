@@ -4,39 +4,49 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
-#include "sc_err.h"
+#include "sn_err.h"
 #include "sn_msg.h"
 
-typedef enum{HANDSHAKE_INIT=0x01,HANDSHAKE_RESPONSE=0x02,HANDSHAKE_FIN=0x03,TRANSPORT=0x10} sc_packet_type_e;
+// length in bytes
+#define SN_PACKET_LEN_LEN          2
+#define SN_ID_LENGTH_LEN           2
+#define SN_VERSION_LEN             1
+#define SN_TYPE_LEN                1
+#define SN_EPHEMERAL_PUB_KEY_LEN   32
+#define SN_MAX_PACKET_LEN          512 //set at runtime
+
+#define SN_VERSION                 0x01
+
+typedef enum{HANDSHAKE_INIT=0x01,HANDSHAKE_RESPONSE=0x02,HANDSHAKE_FIN=0x03,TRANSPORT=0x10} sn_packet_type_e;
 
 //HandshakeInit Client -> Server
 typedef struct{ 
-    sc_packet_type_e    HandshakeType;
+    sn_packet_type_e    HandshakeType;
     uint8_t*            ephemeralPubKey;
-} sc_handshakeInitPacket;
+} sn_handshake_init_packet;
 
 //HandshakeResponse Server -> Client
 typedef struct{
-    sc_packet_type_e    HandshakeType;
+    sn_packet_type_e    HandshakeType;
     uint8_t*            ephemeralPubKey;
     uint16_t            smolcertLen;
     uint8_t*            smolcert;
     uint16_t            payloadLen;
     uint8_t*            payload;
-} sc_handshakeResponsePacket;
+} sn_handshake_response_packet;
 
 //HandshakeFin Client -> Server
 typedef struct{
-    sc_packet_type_e    HandshakeType;
+    sn_packet_type_e    HandshakeType;
     uint16_t            encryptedIdentityLen;
     uint8_t*            encryptedIdentity;
     uint16_t            encryptedPayloadLen;
     uint8_t*            encryptedPayload;
-} sc_handshakeFinPacket;
+} sn_handshake_fin_packet;
 
 //Transport Server <-> Client
 typedef struct{
-    sc_packet_type_e    PaketType;
+    sn_packet_type_e    PaketType;
     uint8_t             encryptedPayloadLen;
     uint8_t*            encryptedPayload;
 } sc_transportPacket;
@@ -51,7 +61,7 @@ typedef struct{
  *  msgLen:       contains the length of msgBuffer
  *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
  * */
-sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg);
+sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sc_buffer_t *msg);
 
 /**
  * Function: packHandshakeFin
@@ -63,7 +73,7 @@ sc_err_t packHandshakeInit(sc_handshakeInitPacket* packet, sn_msg_t *msg);
  *  msgLen:       contains the length of msgBuffer
  *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
  * */
-sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet ,sn_msg_t *msg);
+sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf);
 
 /**
  * Function: unpackHandshakeResponse
@@ -75,7 +85,7 @@ sc_err_t packHandshakeFin(sc_handshakeFinPacket* packet ,sn_msg_t *msg);
  *  msgLen:       contains the length of msgBuffer
  *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
  * */
-sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet, sn_msg_t *msg);
+sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet, sn_buffer_t *msg);
 
 
 
@@ -90,7 +100,7 @@ sc_err_t unpackHandshakeResponse(sc_handshakeResponsePacket* packet, sn_msg_t *m
  * */
 uint16_t readUint16(uint8_t* buf);
 
-void writeUint16(uint8_t* buf, uint16_t val);
+void sn_write_uint16(uint8_t* buf, uint16_t val);
 
 /**
  * Function: readLVBlock

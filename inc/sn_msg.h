@@ -58,6 +58,60 @@ void sn_buffer_copy_into(sn_buffer_t *buf, uint8_t* in_buf, size_t len);
  */
 void sn_buffer_ensure_cap(sn_buffer_t *buf, size_t expected_cap);
 
+/**
+ * @brief Writes data into the buffer and moves the pointer along, while maintaining a length 0.
+ * 
+ * @param buf 
+ * @param data 
+ * @param data_len 
+ */
+void sn_buffer_write(sn_buffer_t *buf, uint8_t* data, size_t data_len);
+
+/**
+ * @brief Rewinds the buffer after writing to it
+ * 
+ * @param buf 
+ */
+void sn_buffer_rewind(sn_buffer_t *buf);
+
+/**
+ * @brief Writes a uint16 with correct endianness to the buffer
+ * 
+ * @param buf 
+ * @param val 
+ */
+void sn_buffer_write_uint16(sn_buffer_t* buf, uint16_t val);
+
+/**
+ * @brief If an lv buffer is expected at the current zero index of the buffer, return the length
+ * without moving the index forward.
+ * 
+ * @param buf 
+ * @return uint16_t 
+ */
+uint16_t sn_buffer_peek_lv_len(sn_buffer_t* buf);
+
+/**
+ * @brief Read the next expected lv block and move the index forward, therefore consuming parts of the buffer.
+ * 
+ * @param buf 
+ * @param dst 
+ * @param dst_len 
+ */
+sn_err_t sn_buffer_read_lv_block(sn_buffer_t* buf, uint8_t* dst, size_t dst_len);
+
+/**
+ * @brief Read len into dest buffer and move buffer forward
+ * 
+ * @param buf 
+ * @param dest 
+ * @param len 
+ * @return sn_err_t 
+ */
+sn_err_t sn_buffer_read(sn_bufffer_t* buf, uint8_t* dest, size_t len);
+
+sn_err_t sn_buffer_read_uint16(sn_buffer_t* buf, uint16_t* dest);
+
 //Padding
 sn_err_t padBuffer(sn_buffer_t*);
 sn_err_t unpadBuffer(sn_buffer_t*);

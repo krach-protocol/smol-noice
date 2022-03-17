@@ -156,7 +156,7 @@ void test_packHandshakeInit(void){
   sc_err_t err;
   sn_msg_t testMsg;
   sn_buffer_t certBuffer;
-  sc_handshakeInitPacket testPacket;
+  sn_handshake_init_packet testPacket;
   char certFilePath[CWD_BUF_SIZE];
 
   //Load test-client-cert
@@ -196,7 +196,7 @@ void test_packHandshakeInit(void){
 }
 
 void test_packHandshakeFin(void) {
-  sc_handshakeFinPacket pkt;
+  sn_handshake_fin_packet pkt;
   pkt.HandshakeType = HANDSHAKE_FIN;
   uint8_t encryptedPayload[2] = { 0x01, 0x02 };
   pkt.encryptedPayload = (uint8_t*)&encryptedPayload;
@@ -224,7 +224,7 @@ void test_makeNoiseHandshake(void){
   err =  loadSmolCert(certFilePath,&clientCert,&clientCertBuffer);
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
   if(err != Sc_No_Error){
-    //sc_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
+    //sn_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
   }else{
     printf("Error initialzing cert");
   }

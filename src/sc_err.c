@@ -1,4 +1,4 @@
-#include "sc_err.h"
+#include "sn_err.h"
 #include <stdio.h>
 
 
