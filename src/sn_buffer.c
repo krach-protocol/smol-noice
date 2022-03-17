@@ -1,4 +1,4 @@
-#include "sn_msg.h"
+#include "sn_buffer.h"
 
 #include <stdlib.h>
 #include <string.h>

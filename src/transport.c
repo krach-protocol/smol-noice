@@ -2,7 +2,7 @@
 #include "port.h"
 #include "smol-noice-internal.h"
 #include "sn_err.h"
-#include "sn_msg.h"
+#include "sn_buffer.h"
 #include <stdio.h>
 #include <sys/socket.h>
 

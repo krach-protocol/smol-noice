@@ -4,7 +4,7 @@
 #include "transport.h"
 #include "handshake.h"
 
-#include "sn_msg.h"
+#include "sn_buffer.h"
 
 #include <internal.h>
 #include <inttypes.h>
@@ -47,6 +47,10 @@ sc_err_t sn_set_client_priv_key(smolNoice_t* smolNoice,uint8_t* privateKey){
     memcpy(smolNoice->clientPrivateKey,privateKey,32);
 
     return SC_OK;
+}
+
+int sn_send(smolNoice_t* smol_noice, uint8_t* buf, size_t buf_len) {
+
 }
 
 sc_err_t smolNoiceSendData(smolNoice_t* smolNoice,uint8_t dataLen,uint8_t* data){
