@@ -24,7 +24,10 @@ smolNoice_t* smolNoice(void){
 
 sn_err_t sn_connect(smolNoice_t* smol_noice) {
     SN_ERROR_CHECK(sn_init(smol_noice));
-    SN_ERROR_CHECK(run_handshake(smol_noice));
+    if(( sn_err_t err = run_handshake(smol_noice)) != SC_OK) {
+        close(smol_noice->socket);
+        return err;
+    }
     return SC_OK;
 }
 
