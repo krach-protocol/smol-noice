@@ -87,37 +87,4 @@ sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf);
  * */
 sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet, sn_buffer_t *msg);
 
-
-
-/**
- * Function: readUint16
- * ---------------
- * Reads a little endian unsigned 16 bit integer from the provided buf. Calling functions must ensure that
- * the buffer contains at least 2 bytes.
- * 
- * buf:         Pointer to the byte array to read the uint16 from
- * return uint16_t, the little endian unsigned 16 bit integer
- * */
-uint16_t readUint16(uint8_t* buf);
-
-void sn_write_uint16(uint8_t* buf, uint16_t val);
-
-/**
- * Function: readLVBlock
- * ---------------------
- * Read a Length Value block. These are length prefixed blocks with the value following directly after.
- * It is assumed that the length is encoded as little endian unsigned 16 bit integer in the first two bytes.
- * 
- * buf:             Pointer to the byte array to read the LV block from
- * bufLen:          Total length of the byte array
- * dst:             Target pointer which holds the allocated memory for the read value
- * dstlen:          Length of the allocated destination byte array
- * return sc_err_t, SC_ERR if something went wrong otherwise SC_OK
- * */
-sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t** dst, uint16_t *dstlen);
-
-sc_err_t writeLVBlock(uint8_t *buf, uint16_t bufLen, uint8_t *data, uint16_t dataLen, uint16_t *outLen);
-
-
-
 #endif

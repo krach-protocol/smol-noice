@@ -92,7 +92,7 @@ void* runnerTask(void* arg){
                 printf("State: SEND FINISH\n");
 
                 STATE_ERROR_CHECK(writeMessageS_DHSE(taskData, &finPaket));
-                STATE_ERROR_CHECK(splitCipher(taskData));
+                STATE_ERROR_CHECK(sn_split_cipher(taskData));
 
                 finPaket.HandshakeType = HANDSHAKE_FIN;
                 STATE_ERROR_CHECK(packHandshakeFin(&finPaket,&networkMsg));

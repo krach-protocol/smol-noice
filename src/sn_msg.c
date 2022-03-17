@@ -112,6 +112,13 @@ sn_err_t sn_buffer_read_uint16(sn_buffer_t* buf, uint16_t* dest) {
     return SC_OK;
 }
 
+void sn_buffer_write_lv_block(sn_buffert* buf, uint8_t* src, uint16_t src_len) {
+    sn_buffer_ensure_cap(buf, src_len+2);
+    sn_buffer_write_uint16(buf, src_len);
+    memcpy(src, buf->idx, src_len);
+    buf->idx += src_len;
+}
+
 sc_err_t padBuffer(sn_buffer_t* buf){
     uint8_t bytes_to_pad = (uint8_t)(buf->len+1)%16;
     size_t new_len = buf->len + 1 /*pad header */ + bytes_to_pad;

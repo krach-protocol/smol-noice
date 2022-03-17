@@ -22,42 +22,6 @@ void printHex(uint8_t* key,uint8_t keyLen){
   return;
 }
 
-uint16_t readUint16(uint8_t* buf) {
-    uint16_t result = 0;
-    result += buf[0] | (buf[1] << 8);
-    return result;
-}
-
-void sn_write_uint16(uint8_t* buf, uint16_t val) {
-    buf[0] = (val & 0x00FF);
-    buf[1] = (val & 0xFF00) >> 8;
-}
-
-// Reads a single length value block from buf. Buf must start with a LV-block
-sc_err_t readLVBlock(uint8_t* buf, uint16_t bufLen, uint8_t** dst, uint16_t *dstlen) {
-    if(bufLen < 2) {
-        return SC_ERR;
-    }
-    *dstlen = readUint16(buf);
-
-    if(bufLen < (*dstlen+2)) return SC_ERR; // Provided buffer is too small to contain a valid LV block
-
-    *dst = buf+2;
-
-    return SC_OK;
-}
-
-sc_err_t writeLVBlock(uint8_t *buf, uint16_t bufLen, uint8_t *data, uint16_t dataLen, uint16_t *outLen) {
-    if(bufLen < dataLen + 2) {
-        return SC_ERR;
-    }
-    uint8_t* writePtr = buf;
-    writeUint16(writePtr, dataLen);
-    writePtr += 2; // Increase pointer by length of uint16
-    memcpy(writePtr, data, dataLen);
-    return SC_OK;
-}
-
 /** Little sidenote:
  * See unpacking and packing discussion here:
  * https://stackoverflow.com/questions/19165134/correct-portable-way-to-interpret-buffer-as-a-struct
@@ -131,41 +95,21 @@ sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buf
 }
 
 
-sc_err_t packHandshakeFin(sn_handshake_fin_packet* packet , sn_msg_t *msg){
+sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf){
     uint16_t packetLen;
     uint8_t version = SC_VERSION;
     uint8_t* writePtr;
 
-    if(packet->HandshakeType != HANDSHAKE_FIN) return SC_PAKET_ERR;
-    packetLen = SC_TYPE_LEN + SC_PACKET_LEN_LEN+ SC_ID_LENGTH_LEN + packet->encryptedIdentityLen;// + packet->encryptedPayloadLen ;
-    msg->msgLen = (size_t)packetLen;
-    msg->msgBuf = (uint8_t*)calloc(1,msg->msgLen);
-    writePtr = msg->msgBuf;
+    packet->HandshakeType = HANDSHAKE_FIN;
+    packetLen = SN_TYPE_LEN + SN_PACKET_LEN_LEN+ SN_ID_LENGTH_LEN + packet->encryptedIdentityLen;// + packet->encryptedPayloadLen ;
+    sn_buffer_ensure_cap(buf, (size_t)packetLen);
 
-    
-    memcpy(writePtr,&(packet->HandshakeType),SC_TYPE_LEN);
-    writePtr += SC_TYPE_LEN;
+    sn_buffer_write(buf, &(packet->HandshakeType), SN_TYPE_LEN);    
+    sn_buffer_write_uint16(buf, packetLen - SN_TYPE_LEN - SN_PACKET_LEN_LEN);
 
-    *writePtr = ((packetLen-(SC_TYPE_LEN + SC_PACKET_LEN_LEN))&0x00FF);
-    writePtr++;
-    *writePtr = ((packetLen-(SC_TYPE_LEN + SC_PACKET_LEN_LEN))&0xFF00)>>8;
-    writePtr++;
-    
-
-    *writePtr = (packet->encryptedIdentityLen&0x00FF);
-    writePtr++;
-    *writePtr = (packet->encryptedIdentityLen&0xFF00)>>8;
-    writePtr++;
-   
-
-    memcpy(writePtr,packet->encryptedIdentity,packet->encryptedIdentityLen);
-    writePtr+=packet->encryptedIdentityLen;
-    free(packet->encryptedIdentity);
-
-    
+    sn_buffer_write_lv_block(buf, packet->encryptedIdentity, packet->encryptedIdentityLen);    
 
     return SC_OK;
-
 }
 
 
