@@ -4,7 +4,7 @@
 #include <smolcert.h>
 
 #include "sn_err.h"
-#include "sn_msg.h"
+#include "sn_buffer.h"
 #include "sc_packet.h"
 #include "smol-noice.h"
 

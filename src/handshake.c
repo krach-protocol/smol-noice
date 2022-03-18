@@ -69,6 +69,8 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
     sn_handshake_response_packet rsp_pkt;
     if(( err = unpack_handshake_response(&rsp_pkt, buf)) != SC_OK) {
         sn_buffer_free(buf);
+        sn_buffer_free(rsp_pkt.smolcert)
+        sn_buffer_free(rsp_pkt.payload);
         return err;
     }
     sn_buffer_reset(buf);
@@ -76,6 +78,8 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
         sn_buffer_free(buf);
         return err;
     }
+    sn_buffer_free(rsp_pkt.smolcert)
+    sn_buffer_free(rsp_pkt.payload);
 
     sn_handshake_fin_packet fin_pkt;
     if(( err = writeMessageS_DHSE(smol_noice, &fin_pkt)) != SC_OK) {
@@ -88,8 +92,12 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
     }
     if((err = sn_send_buffer(smol_noice->socket, buf)) != SC_OK) {
         sn_buffer_free(buf);
+        sn_buffer_free(fin_pkt.encrypted_identity);
+        sn_buffer_free(fin_pkt.encrypted_payload);
         return err;
     }
+    sn_buffer_free(fin_pkt.encrypted_identity);
+    sn_buffer_free(fin_pkt.encrypted_payload);
     if((err = sn_split_cipher(smol_noice)) != SC_OK) {
         sn_buffer_free(buf);
         return err;
@@ -120,27 +128,21 @@ sc_err_t writeMessageS(smolNoice_t* smolNoice, sn_handshake_fin_packet* packet){
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
     NoiseBuffer buff;
     noise_buffer_init(buff);
-    sn_buffer_t certBuffer;
-
-    certBuffer.msgLen = smolNoice->clientCertLen;
-    certBuffer.msgBuf = (uint8_t*)calloc(certBuffer.msgLen,sizeof(uint8_t));
-    memcpy(certBuffer.msgBuf,smolNoice->clientCert,certBuffer.msgLen);
-
-    SC_ERROR_CHECK(sn_buffer_pad(&certBuffer));
+    sn_buffer_t* cert_buffer = sn_buffer_new(256);
+    cert_buffer->idx += 1; // Give the buffer more chance for more efficient padding
+    sn_buffer_ensure_cap(buf, smolNoice->clientCertLen + 33); // Ensure we have enough memory for padding + MAC
+    sn_buffer_copy_into(cert_buffer, smolNoice->clientCert, smolNoice->clientCertLen);
+    SC_ERROR_CHECK(sn_buffer_pad(cert_buffer));
+    sn_buffer_ensure_cap(cert_buffer, cert_buffer.len + 16); // Ensure we have enough memory reserved for the MAC
     
-    noise_buffer_set_inout(buff,certBuffer.msgBuf,certBuffer.msgLen-16,certBuffer.msgLen);
-    
-
-    
+    noise_buffer_set_inout(buff,cert_buffer.idx,cert_buffer.len, cert_buffer._cap);
     NOISE_ERROR_CHECK(noise_symmetricstate_encrypt_and_hash(symmState,&buff));
-    
+    cert_buffer->len += 16; // Signal the there is now a MAC at the end of the buffer
    
-    packet->encryptedIdentityLen = certBuffer.msgLen;
-    packet->encryptedIdentity = (uint8_t*)calloc(packet->encryptedIdentityLen,sizeof(uint8_t));
-    memcpy(packet->encryptedIdentity,certBuffer.msgBuf,packet->encryptedIdentityLen);
-
-    free(certBuffer.msgBuf);
+    packet->encrypted_identity = cert_buffer;
     packet->HandshakeType = HANDSHAKE_FIN;
+
+    // TODO, do the same with payload, if payload is set
     
     return SC_OK;
 }
@@ -209,40 +211,35 @@ sc_err_t readMessageDHEE(smolNoice_t* smolNoice, sn_handshake_response_packet *p
 
 sc_err_t readMessageS(smolNoice_t* smolNoice, sn_handshake_response_packet *packet){
      NoiseDHState* remoteStaticKeypair = NULL;
-     uint8_t remotePubKey[32];
-     smolcert_t remoteCert = {0};
+     uint8_t remote_pub_key[32];
+     smolcert_t remote_cert = {0};
 
     uint8_t* DHresult = NULL;
     size_t DHresultSize = 0;
 
-   NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
-   NoiseBuffer idBuffer;
-    sn_buffer_t smolCertBuffer;
+    NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
+    NoiseBuffer idBuffer;
     
+    noise_buffer_init(idBuffer);
+    noise_buffer_set_input(idBuffer, packet->smolcert->idx,packet->smolcert->len);
    
-   noise_buffer_init(idBuffer);
-   noise_buffer_set_input(idBuffer, packet->smolcert,packet->smolcertLen);
+    NOISE_ERROR_CHECK(noise_symmetricstate_decrypt_and_hash(symmState,&idBuffer));
+    packet->smolcert->len -= 16; // Remove the MAC from the length of the buffer;
    
-   NOISE_ERROR_CHECK(noise_symmetricstate_decrypt_and_hash(symmState,&idBuffer));
-   
-
-    smolCertBuffer.msgBuf=packet->smolcert;
-    smolCertBuffer.msgLen=packet->smolcertLen;
-    SC_ERROR_CHECK(unpadBuffer(&smolCertBuffer));
-    packet->smolcertLen = smolCertBuffer.msgLen;
+    SC_ERROR_CHECK(sn_buffer_unpad(packet->smolcert));
    
 
-    if( sc_parse_certificate(packet->smolcert,packet->smolcertLen, &remoteCert) != Sc_No_Error){
+    if( sc_parse_certificate(packet->smolcert->idx,packet->smolcert->len, &remote_cert) != Sc_No_Error){
         return SC_ERR;
     }
     
-    SC_ERROR_CHECK(smolNoice->certCallback(packet->smolcert,packet->smolcertLen,&remoteCert));
+    SC_ERROR_CHECK(smolNoice->certCallback(packet->smolcert->idx,packet->smolcert->len,&remote_cert));
     
     //TODO check why validation fails
     //if(sc_validate_certificate_signature(packet->smolcert, packet->smolcertLen, rootPubKey) != SC_OK) return SC_ERR;
     
 
-    if( sc_get_curve_public_key(&remoteCert,remotePubKey) != Sc_No_Error) {
+    if( sc_get_curve_public_key(&remote_cert, remote_pub_key) != Sc_No_Error) {
         return SC_ERR;
     }
     

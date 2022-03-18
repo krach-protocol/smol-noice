@@ -4,8 +4,6 @@
 #include "smol-noice.h"
 #include "statemachine.h"
 #include <internal.h>
-#include <pthread.h>  
-#include "../src/port/queue.h"
 
 typedef struct smolNoice
 {

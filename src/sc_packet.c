@@ -78,19 +78,20 @@ sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buf
     if((err = sn_buffer_read(buf, (uint8_t*)(packet->ephemeralPubkey), SN_EPHEMERAL_PUB_KEY_LEN)) != SC_OK ) {
         return err;
     }
-    packet->smolcertLen = sn_buffer_peek_lv_len(buf);
-    packet->smolcert = (uint8_t*)calloc(1, packet->smolcertLen);
+    uint16_t smolcert_len = sn_buffer_peek_lv_len(buf);
+    packet->smolcert = sn_buffer_new(smolcert_len);
 
-    if((err = sn_buffer_read_lv_block(buf, packet->smolcert, packet->smolcertLen)) != SC_OK) {
+    if((err = sn_buffer_read_lv_block(buf, packet->smolcert->idx, smolcert_len)) != SC_OK) {
         return err;
     }
+    packet->smolcert->len = smolcert_len;
 
-    packet->payloadLen = sn_buffer_peek_lv_len(buf);
-    packet->payload = (uint8_t*)calloc(1, packet->payloadLen);
-    if((err = sn_buffer_read_lv_block(buf, packet->payload, packet->payloadLen)) != SC_OK) {
+    uint16_t payload_len = sn_buffer_peek_lv_len(buf);
+    packet->payload = sn_buffer_new(payload_len);
+    if((err = sn_buffer_read_lv_block(buf, packet->payload->idx, payload_len)) != SC_OK) {
         return err;
     }
-    
+    packet->payload->len = payload_len;
     return err;
 }
 
@@ -107,7 +108,7 @@ sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf){
     sn_buffer_write(buf, &(packet->HandshakeType), SN_TYPE_LEN);    
     sn_buffer_write_uint16(buf, packetLen - SN_TYPE_LEN - SN_PACKET_LEN_LEN);
 
-    sn_buffer_write_lv_block(buf, packet->encryptedIdentity, packet->encryptedIdentityLen);    
+    sn_buffer_write_lv_block(buf, packet->encrypted_identity->idx, packet->encrypted_identity->len);    
 
     return SC_OK;
 }

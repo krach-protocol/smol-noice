@@ -108,7 +108,7 @@ sn_err_t sn_buffer_read_lv_block(sn_buffer_t* buf, uint8_t* dst, size_t dst_len)
  * @param len 
  * @return sn_err_t 
  */
-sn_err_t sn_buffer_read(sn_bufffer_t* buf, uint8_t* dest, size_t len);
+sn_err_t sn_buffer_read(sn_buffer_t* buf, uint8_t* dest, size_t len);
 
 /**
  * @brief Reads a uint16 from the buffer and moves it forward
@@ -119,11 +119,11 @@ sn_err_t sn_buffer_read(sn_bufffer_t* buf, uint8_t* dest, size_t len);
  */
 sn_err_t sn_buffer_read_uint16(sn_buffer_t* buf, uint16_t* dest);
 
-void sn_buffer_write_lv_block(sn_buffert* buf, uint8_t* src, uint16_t src_len);
+void sn_buffer_write_lv_block(sn_buffer_t* buf, uint8_t* src, uint16_t src_len);
 
 //Padding
 sn_err_t sn_buffer_pad(sn_buffer_t*);
-sn_err_t unpadBuffer(sn_buffer_t*);
+sn_err_t sn_buffer_unpad(sn_buffer_t*);
 
 
 #endif

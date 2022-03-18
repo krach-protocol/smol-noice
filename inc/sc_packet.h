@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #include "sn_err.h"
-#include "sn_msg.h"
+#include "sn_buffer.h"
 
 // length in bytes
 #define SN_PACKET_LEN_LEN          2
@@ -29,19 +29,15 @@ typedef struct{
 typedef struct{
     sn_packet_type_e    HandshakeType;
     uint8_t*            ephemeralPubKey;
-    uint16_t            smolcertLen;
-    uint8_t*            smolcert;
-    uint16_t            payloadLen;
-    uint8_t*            payload;
+    sn_buffer_t*        smolcert;
+    sn_buffer_t*        payload;
 } sn_handshake_response_packet;
 
 //HandshakeFin Client -> Server
 typedef struct{
     sn_packet_type_e    HandshakeType;
-    uint16_t            encryptedIdentityLen;
-    uint8_t*            encryptedIdentity;
-    uint16_t            encryptedPayloadLen;
-    uint8_t*            encryptedPayload;
+    sn_buffer_t*        encrypted_identity;
+    sn_buffer_t*        encrypted_payload;
 } sn_handshake_fin_packet;
 
 //Transport Server <-> Client
@@ -61,7 +57,7 @@ typedef struct{
  *  msgLen:       contains the length of msgBuffer
  *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
  * */
-sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sc_buffer_t *msg);
+sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t *msg);
 
 /**
  * Function: packHandshakeFin

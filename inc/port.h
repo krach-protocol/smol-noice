@@ -1,6 +1,6 @@
 #ifndef _PORT_H_SC_
 #define _PORT_H_SC_
-#include "sn_msg.h"
+#include "sn_buffer.h"
 #include "smol-noice.h"
 
 

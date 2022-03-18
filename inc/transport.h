@@ -5,7 +5,7 @@
 #include "smol-noice.h"
 
 #include "sn_err.h"
-#include "sn_msg.h"
+#include "sn_buffer.h"
 
 void printHex(uint8_t*,uint8_t);
 

@@ -48,6 +48,7 @@ void sn_buffer_copy_into(sn_buffer_t *buf, uint8_t* in_buf, size_t len) {
         sn_buffer_resize(buf, (len-(buf->_cap - buf->len)));
     }
     memcpy((buf->idx+buf->len), in_buf, len);
+    buf->len += len;
 }
 
 void sn_buffer_ensure_cap(sn_buffer_t *buf, size_t expected_cap) {
@@ -60,8 +61,8 @@ void sn_buffer_ensure_cap(sn_buffer_t *buf, size_t expected_cap) {
 
 void sn_buffer_write(sn_buffer_t *buf, uint8_t* data, size_t data_len) {
     sn_buffer_ensure_cap(buf, data_len);
-    memcpy(buf->idx, data, len);
-    buf->idx += len;
+    memcpy(buf->idx, data, data_len);
+    buf->idx += data_len;
     buf->len = 0;
 }
 
@@ -92,7 +93,7 @@ sn_err_t sn_buffer_read_lv_block(sn_buffer_t* buf, uint8_t* dst, size_t dst_len)
     return SC_OK;
 }
 
-sn_err_t sn_buffer_read(sn_bufffer_t* buf, uint8_t* dest, size_t len) {
+sn_err_t sn_buffer_read(sn_buffer_t* buf, uint8_t* dest, size_t len) {
     if(buf->len < len) {
         return SC_PAKET_ERR;
     }
@@ -142,7 +143,7 @@ sc_err_t sn_buffer_pad(sn_buffer_t* buf){
     return SC_OK;
 
 }
-sc_err_t unpadBuffer(sn_buffer_t* buf){
+sn_err_t sn_buffer_unpad(sn_buffer_t* buf){
     uint8_t padded_bytes = buf->idx[0];
     buf->len = buf->len - 1 /*padding header*/ - padded_bytes;
     buf->idx = buf->idx + 1;
