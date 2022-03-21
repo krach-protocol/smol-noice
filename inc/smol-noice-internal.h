@@ -2,7 +2,6 @@
 #define _SMOLNOICE_INTERNAL_H_
 
 #include "smol-noice.h"
-#include "statemachine.h"
 #include <internal.h>
 #include "sn_buffer.h"
 

@@ -35,17 +35,16 @@ void printHex(uint8_t* key,uint8_t keyLen){
 
 sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t* buf){
     sn_buffer_reset(buf);
-    size_t packetLen;
     uint8_t version = SN_VERSION;
-    packet->HandshakeType = HANDSHAKE_INIT // Always set the handshake type, doesn't hurt
+    packet->HandshakeType = HANDSHAKE_INIT; // Always set the handshake type, doesn't hurt
 
-    packetLen  =  SN_EPHEMERAL_PUB_KEY_LEN; // We put version and type at the beginning and only count the bytes following that
+    size_t packetLen  =  SN_EPHEMERAL_PUB_KEY_LEN; // We put version and type at the beginning and only count the bytes following that
     
-    msg->msgLen = (size_t)packetLen + SN_PACKET_LEN_LEN + SN_VERSION_LEN + SN_TYPE_LEN;
+    buf->len = (size_t)packetLen + SN_PACKET_LEN_LEN + SN_VERSION_LEN + SN_TYPE_LEN;
     sn_buffer_ensure_cap(buf, packetLen);
 
     sn_buffer_write(buf, &version, SN_VERSION_LEN);
-    sn_buffer_write(buf, &(packet->HandshakeType), SN_TYPE_LEN);
+    sn_buffer_write(buf, (uint8_t*)&(packet->HandshakeType), SN_TYPE_LEN);
     
     sn_buffer_write_uint16(buf, (uint16_t)packetLen);
     sn_buffer_write(buf, packet->ephemeralPubKey, SN_EPHEMERAL_PUB_KEY_LEN);
@@ -55,12 +54,10 @@ sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t* buf)
 }
 
 sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buffer_t* buf){
-    uint16_t readBytes = 0;
-    uint8_t version = 0;
     uint16_t packet_len = 0;
-    uint8_t* readPtr = msg->msgBuf;
+
     sc_err_t err = SC_OK;
-    if(( err = sn_buffer_read(buf, (uint8_t*)&(packet->HandshakeType), SC_TYPE_LEN) != SC_OK) {
+    if(( err = sn_buffer_read(buf, (uint8_t*)&(packet->HandshakeType), SN_TYPE_LEN)) != SC_OK) {
         return err;
     }
     if (packet->HandshakeType != HANDSHAKE_RESPONSE) {
@@ -75,7 +72,7 @@ sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buf
     }
 
     packet->ephemeralPubKey = (uint8_t*)calloc(SN_EPHEMERAL_PUB_KEY_LEN,sizeof(uint8_t));
-    if((err = sn_buffer_read(buf, (uint8_t*)(packet->ephemeralPubkey), SN_EPHEMERAL_PUB_KEY_LEN)) != SC_OK ) {
+    if((err = sn_buffer_read(buf, (uint8_t*)(packet->ephemeralPubKey), SN_EPHEMERAL_PUB_KEY_LEN)) != SC_OK ) {
         return err;
     }
     uint16_t smolcert_len = sn_buffer_peek_lv_len(buf);
@@ -98,14 +95,12 @@ sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buf
 
 sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf){
     uint16_t packetLen;
-    uint8_t version = SC_VERSION;
-    uint8_t* writePtr;
 
     packet->HandshakeType = HANDSHAKE_FIN;
-    packetLen = SN_TYPE_LEN + SN_PACKET_LEN_LEN+ SN_ID_LENGTH_LEN + packet->encryptedIdentityLen;// + packet->encryptedPayloadLen ;
+    packetLen = SN_TYPE_LEN + SN_PACKET_LEN_LEN+ SN_ID_LENGTH_LEN + packet->encrypted_identity->len;// + packet->encryptedPayloadLen ;
     sn_buffer_ensure_cap(buf, (size_t)packetLen);
 
-    sn_buffer_write(buf, &(packet->HandshakeType), SN_TYPE_LEN);    
+    sn_buffer_write(buf, (uint8_t*)&(packet->HandshakeType), SN_TYPE_LEN);    
     sn_buffer_write_uint16(buf, packetLen - SN_TYPE_LEN - SN_PACKET_LEN_LEN);
 
     sn_buffer_write_lv_block(buf, packet->encrypted_identity->idx, packet->encrypted_identity->len);    

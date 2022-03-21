@@ -1,6 +1,5 @@
 #include "smol-noice-internal.h"
 
-#include "statemachine.h"
 #include "transport.h"
 #include "handshake.h"
 
@@ -25,34 +24,14 @@ smolNoice_t* smolNoice(void){
     return smolNoice;
 }
 
-uint8_t open_socket(smolNoice_t *smolNoice){
-    struct sockaddr_in serv_addr; 
-    if ((smolNoice->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        printf("ERROR");
-        return 1;	 
-    }    
-	
-    serv_addr.sin_family = AF_INET; 
-	serv_addr.sin_port = htons(smolNoice->hostPort);
-	
-    if(inet_pton(AF_INET,  smolNoice->hostAddress, &serv_addr.sin_addr)<=0) {
-        printf("ERROR");
-        return 1; 
-    }
-   
-    printf("Connecting to: %s:%d\n",smolNoice->hostAddress,smolNoice->hostPort);
-   if(connect(smolNoice->socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-    {
-       printf("Error : Connect Failed \n");
-       return 1;
-    }  
-    return 0;
-}
-
 sn_err_t sn_connect(smolNoice_t* smol_noice) {
     SN_ERROR_CHECK(sn_init(smol_noice));
-    if(( sn_err_t err = run_handshake(smol_noice)) != SC_OK) {
-        close(smol_noice->socket);
+    if(open_socket(smol_noice) != 0) {
+        return SN_NET_ERR;
+    }
+    sn_err_t err = run_handshake(smol_noice);
+    if(err != SC_OK) {
+        close_socket(smol_noice);
         return err;
     }
     return SC_OK;
@@ -120,42 +99,26 @@ int sn_recv(smolNoice_t* smol_noice, uint8_t* buf, size_t buf_len) {
         return -1;
     }
     sn_buffer_rewind(smol_noice->receive_buffer);
-    uint16_t pkt_len = sn_buffer_read_uint16(smol_noice->receive_buffer);
-    if(buf_len < pkt_len) {
+    uint16_t pkt_len = 0;
+    err = sn_buffer_read_uint16(smol_noice->receive_buffer, &pkt_len);
+    if(err != SC_OK) {
         return -2;
     }
-    uint16_t read_data = 0;
+    if(buf_len < pkt_len) {
+        return -3;
+    }
+
     sn_buffer_reset(smol_noice->receive_buffer);
     sn_read_from_socket(smol_noice->socket, smol_noice->receive_buffer, pkt_len);
     NoiseBuffer rxBuffer;
-    noise_buffer_set_inout(rxBuffer, smol_noice->receive_buffer, smol_noice->receive_buffer->len, smol_noice->receive_buffer->len);
-    if(noise_cipherstate_decrypt(smolNoice->rxCipher, &rxBuffer) != NOISE_ERROR_NONE){
-        return -3;
+    noise_buffer_set_inout(rxBuffer, smol_noice->receive_buffer->idx, smol_noice->receive_buffer->len, smol_noice->receive_buffer->len);
+    if(noise_cipherstate_decrypt(smol_noice->rxCipher, &rxBuffer) != NOISE_ERROR_NONE){
+        return -4;
     }
     smol_noice->receive_buffer->len -= 16; //Remove the MAC at the end
     sn_buffer_unpad(smol_noice->receive_buffer);
     memcpy(buf, smol_noice->receive_buffer->idx, smol_noice->receive_buffer->len);
     return (int)smol_noice->receive_buffer->len;
-}
-
-sc_err_t smolNoiceSendData(smolNoice_t* smolNoice,uint8_t dataLen,uint8_t* data){
-    if(smolNoice->handShakeStep != DO_TRANSPORT) return SC_ERR;
-    
-    sn_buffer_t *dataBuffer = (sn_buffer_t*)calloc(1,sizeof(sn_buffer_t));
-    dataBuffer->msgLen = dataLen;
-    dataBuffer->msgBuf = (uint8_t*)calloc(1,dataBuffer->msgLen);
-    memcpy(dataBuffer->msgBuf,data,dataBuffer->msgLen);
-  
-    pthread_mutex_lock(smolNoice->txQueueLock);
-    if(queue_peek(smolNoice->txQueue) == FULL){
-        //printf("Tx queue full!\n");
-        pthread_mutex_unlock(smolNoice->txQueueLock);
-        return SC_ERR;
-    }
-    queue_write(smolNoice->txQueue,dataBuffer);
-    pthread_mutex_unlock(smolNoice->txQueueLock);
-
-    return SC_OK;
 }
 
 sc_err_t sn_set_remote_cert_callback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(uint8_t*,uint8_t,smolcert_t*)){
@@ -164,16 +127,10 @@ sc_err_t sn_set_remote_cert_callback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(u
     return SC_OK;
 }
 
-sc_err_t sn_free(smolNoice_t* smol_noice) {
+void sn_free(smolNoice_t* smol_noice) {
     sn_buffer_free(smol_noice->send_buffer);
     sn_buffer_free(smol_noice->receive_buffer);
     free(smol_noice);
-}
-
-sc_err_t smolNoiceReadyForTransport(smolNoice_t* smolNoice){
-    if(smolNoice->handShakeStep != DO_TRANSPORT) return SC_ERR;
-
-    return SC_OK;
 }
 
 sc_err_t defaultCertCallback(uint8_t* rawCert,uint8_t rawCertlen,smolcert_t* cert){

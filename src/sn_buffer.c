@@ -123,7 +123,7 @@ sn_err_t sn_buffer_read_uint16(sn_buffer_t* buf, uint16_t* dest) {
     return SC_OK;
 }
 
-void sn_buffer_write_lv_block(sn_buffert* buf, uint8_t* src, uint16_t src_len) {
+void sn_buffer_write_lv_block(sn_buffer_t* buf, uint8_t* src, uint16_t src_len) {
     sn_buffer_ensure_cap(buf, src_len+2);
     sn_buffer_write_uint16(buf, src_len);
     memcpy(src, buf->idx, src_len);

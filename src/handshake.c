@@ -12,7 +12,6 @@
 #include <noise/protocol.h>
 
 #include "smolcert.h"
-#include "port.h"
 
 #include "smol-noice-internal.h"
 
@@ -29,15 +28,35 @@
  * 
 */
 
+sc_err_t sn_init(smolNoice_t* smolNoice) {
+
+    NoiseDHState* localEphemeralKeypair = NULL; 
+    NoiseProtocolId krach = {0};
+
+    krach.cipher_id = NOISE_CIPHER_CHACHAPOLY;
+    krach.dh_id = NOISE_DH_CURVE25519;
+    krach.hash_id = NOISE_HASH_BLAKE2s;
+    krach.pattern_id = NOISE_PATTERN_XX;
+    krach.prefix_id = NOISE_PREFIX_KRACH;
+
+    NOISE_ERROR_CHECK(noise_handshakestate_new_by_id(&(smolNoice->handshakeState),&krach,NOISE_ROLE_INITIATOR));
+
+    //TODO: Seed system RNG 
+    localEphemeralKeypair = smolNoice->handshakeState->dh_local_ephemeral;
+    NOISE_ERROR_CHECK(noise_dhstate_generate_keypair(localEphemeralKeypair));   
+
+    return SC_OK;
+}
+
 sc_err_t run_handshake(smolNoice_t* smol_noice) {
     sn_handshake_init_packet init_pkt;
     sn_buffer_t* buf = sn_buffer_new(512);
     sc_err_t err = SC_OK;
-    if((err = writeMessageE(smolNoice, &init_pkt)) != SC_OK ){
+    if((err = writeMessageE(smol_noice, &init_pkt)) != SC_OK ){
         sn_buffer_free(buf);
         return err;
     }
-    if((err = pack_handshake_init(init_pkt, buf)) != SC_OK) {
+    if((err = pack_handshake_init(&init_pkt, buf)) != SC_OK) {
         sn_buffer_free(buf);
         return err;
     }
@@ -56,9 +75,12 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
         return Sc_Validation_Error;
     }
     buf->idx++;
-    uint16_t pkt_len = readUint16(buf->idx);
-    buf->idx += 2;
-    buf->len = 0;
+    uint16_t pkt_len = 0;
+    err = sn_buffer_read_uint16(buf, &pkt_len);
+    if(err != SC_OK) {
+        sn_buffer_free(buf);
+        return err;
+    }
 
     if(( err = sn_read_from_socket(smol_noice->socket, buf, pkt_len)) != SC_OK) {
         sn_buffer_free(buf);
@@ -69,7 +91,7 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
     sn_handshake_response_packet rsp_pkt;
     if(( err = unpack_handshake_response(&rsp_pkt, buf)) != SC_OK) {
         sn_buffer_free(buf);
-        sn_buffer_free(rsp_pkt.smolcert)
+        sn_buffer_free(rsp_pkt.smolcert);
         sn_buffer_free(rsp_pkt.payload);
         return err;
     }
@@ -78,7 +100,7 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
         sn_buffer_free(buf);
         return err;
     }
-    sn_buffer_free(rsp_pkt.smolcert)
+    sn_buffer_free(rsp_pkt.smolcert);
     sn_buffer_free(rsp_pkt.payload);
 
     sn_handshake_fin_packet fin_pkt;
@@ -130,13 +152,13 @@ sc_err_t writeMessageS(smolNoice_t* smolNoice, sn_handshake_fin_packet* packet){
     noise_buffer_init(buff);
     sn_buffer_t* cert_buffer = sn_buffer_new(256);
     cert_buffer->idx += 1; // Give the buffer more chance for more efficient padding
-    sn_buffer_ensure_cap(buf, smolNoice->clientCertLen + 33); // Ensure we have enough memory for padding + MAC
+    sn_buffer_ensure_cap(cert_buffer, smolNoice->clientCertLen + 33); // Ensure we have enough memory for padding + MAC
     sn_buffer_copy_into(cert_buffer, smolNoice->clientCert, smolNoice->clientCertLen);
     SC_ERROR_CHECK(sn_buffer_pad(cert_buffer));
-    sn_buffer_ensure_cap(cert_buffer, cert_buffer.len + 16); // Ensure we have enough memory reserved for the MAC
+    sn_buffer_ensure_cap(cert_buffer, cert_buffer->len + 16); // Ensure we have enough memory reserved for the MAC
     
-    noise_buffer_set_inout(buff,cert_buffer.idx,cert_buffer.len, cert_buffer._cap);
-    NOISE_ERROR_CHECK(noise_symmetricstate_encrypt_and_hash(symmState,&buff));
+    noise_buffer_set_inout(buff, cert_buffer->idx, cert_buffer->len, cert_buffer->_cap);
+    NOISE_ERROR_CHECK(noise_symmetricstate_encrypt_and_hash(symmState ,&buff));
     cert_buffer->len += 16; // Signal the there is now a MAC at the end of the buffer
    
     packet->encrypted_identity = cert_buffer;
@@ -151,7 +173,6 @@ sc_err_t writeMessageDHSE(smolNoice_t* smolNoice, sn_handshake_fin_packet* packe
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
     NoiseDHState *localStaticKeyPair = smolNoice->handshakeState->dh_local_static;
     NoiseDHState *remoteEphemeralKeyPair = smolNoice->handshakeState->dh_remote_ephemeral;
-    NoiseCipherState *sendCipher, *receiveCipher;
     uint8_t DHresult[32];
     uint8_t localPrivateStaticBufferCURVE25519[32];
     size_t DHresultSize = 32;
@@ -210,12 +231,9 @@ sc_err_t readMessageDHEE(smolNoice_t* smolNoice, sn_handshake_response_packet *p
 }
 
 sc_err_t readMessageS(smolNoice_t* smolNoice, sn_handshake_response_packet *packet){
-     NoiseDHState* remoteStaticKeypair = NULL;
-     uint8_t remote_pub_key[32];
-     smolcert_t remote_cert = {0};
-
-    uint8_t* DHresult = NULL;
-    size_t DHresultSize = 0;
+    NoiseDHState* remoteStaticKeypair = NULL;
+    uint8_t remote_pub_key[32];
+    smolcert_t remote_cert = {0};
 
     NoiseSymmetricState *symmState = smolNoice->handshakeState->symmetric;
     NoiseBuffer idBuffer;
@@ -246,7 +264,7 @@ sc_err_t readMessageS(smolNoice_t* smolNoice, sn_handshake_response_packet *pack
     //Finally set the remote public Key in handshake state
     remoteStaticKeypair = noise_handshakestate_get_remote_public_key_dh(smolNoice->handshakeState);
     if(remoteStaticKeypair == NULL) return SC_ERR;
-    NOISE_ERROR_CHECK(noise_dhstate_set_public_key(remoteStaticKeypair,remotePubKey,32))
+    NOISE_ERROR_CHECK(noise_dhstate_set_public_key(remoteStaticKeypair, remote_pub_key, 32))
 
     
    return SC_OK;
@@ -264,7 +282,7 @@ sc_err_t readMessageDHES(smolNoice_t* smolNoice, sn_handshake_response_packet *p
 
     return SC_OK;
 }
-sc_err_t readMessageE_DHEE_S_DHES(smolNoice_t* smolNoice, sc_handshake_response_packet *packet){
+sc_err_t readMessageE_DHEE_S_DHES(smolNoice_t* smolNoice, sn_handshake_response_packet* packet){
     
     SC_ERROR_CHECK(readMessageE(smolNoice, packet));
     SC_ERROR_CHECK(readMessageDHEE(smolNoice, packet));

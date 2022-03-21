@@ -40,6 +40,6 @@ int sn_send(smolNoice_t* smol_noice, uint8_t* buf, size_t buf_len);
  */
 int sn_recv(smolNoice_t* smol_noice, uint8_t* buf, size_t buf_len);
 
-sc_err_t sn_free(smolNoice_t*);
+void sn_free(smolNoice_t*);
 
 #endif
