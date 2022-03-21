@@ -13,8 +13,12 @@ sn_buffer_t* sn_buffer_new(size_t _cap){
 }
 
 void sn_buffer_free(sn_buffer_t* buf) {
-    free(buf->_orig_ptr);
-    free(buf);
+    if(buf != NULL) {
+        if(buf->_orig_ptr != NULL) {
+            free(buf->_orig_ptr);
+        }
+        free(buf);
+    }
 }
 
 void sn_buffer_reset(sn_buffer_t* buf) {
@@ -75,12 +79,18 @@ void sn_buffer_write_uint16(sn_buffer_t* buf, uint16_t val) {
 
 uint16_t sn_buffer_peek_lv_len(sn_buffer_t* buf) {
     uint16_t result = 0;
+    if(buf->len < 2) {
+        return 0;
+    }
     result += buf->idx[0] | (buf->idx[1] << 8);
     return result;
 }
 
 sn_err_t sn_buffer_read_lv_block(sn_buffer_t* buf, uint8_t* dst, size_t dst_len) {
     uint16_t block_len = sn_buffer_peek_lv_len(buf);
+    if(block_len == 0) {
+        return SC_OK;
+    }
     if(block_len > dst_len) {
         return SC_PAKET_ERR;
     }

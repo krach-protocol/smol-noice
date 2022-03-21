@@ -26,32 +26,7 @@ void startTask(void* (*workerTask)(void*),void* args){
     pthread_create(&tid, NULL, workerTask, args);
 }
 
-uint8_t openSocket(smolNoice_t *smolNoice){
-    struct sockaddr_in serv_addr; 
-    if ((smolNoice->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        printf("ERROR");
-        return 1;	 
-    }    
-	
-    serv_addr.sin_family = AF_INET; 
-	serv_addr.sin_port = htons(smolNoice->hostPort);
-	
-    if(inet_pton(AF_INET,  smolNoice->hostAddress, &serv_addr.sin_addr)<=0) {
-        printf("ERROR");
-        return 1; 
-    }
-   
-    printf("Connecting to: %s:%d\n",smolNoice->hostAddress,smolNoice->hostPort);
-   if(connect(smolNoice->socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-    {
-       printf("Error : Connect Failed \n");
-       return 1;
-    } 
 
-   
-    startTask(socketListenerTask,(void*)smolNoice);    
-    return 0;
-}
 
 void* socketListenerTask(void* args){
     smolNoice_t* smolNoice = (smolNoice_t*)args;
