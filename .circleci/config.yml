@@ -7,6 +7,11 @@ jobs:
     steps:
       - checkout
       - run:
+          name: "Pull Submodules"
+          command: |
+            git submodule init
+            git submodule update
+      - run:
           name: Build test project
           command: |
             source /esp/esp-idf/export.sh && cd test-project && idf.py build
