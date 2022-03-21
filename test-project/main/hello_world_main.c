@@ -54,21 +54,18 @@ void app_main(void)
 
     uint8_t pdx = 0;
 
-    smolNoiceSetHost(testConn,host,9095);
-    smolNoiceSetClientCert(testConn,clientCertBuffer,clientCertLen);
-    smolNoiceSetClientPrivateKey(testConn,clientPrivateKey);
+    sn_set_host(testConn,host,9095);
+    sn_set_client_cert(testConn,clientCertBuffer,clientCertLen);
+    sn_set_client_priv_key(testConn,clientPrivateKey);
 
-    smolNoiceSetTransportCallback(testConn,clientCb);
-    smolNoiceSetRemoteCertCallback(testConn,remoteCertCb);
-
-    smolNoiceStart(testConn);
-    while(smolNoiceReadyForTransport(testConn) != SC_OK);
+    sn_set_remote_cert_callback(testConn,remoteCertCb);
+    sn_connect(testConn);
 
     while(1){
         vTaskDelay(1000/portTICK_PERIOD_MS);
         pdx++;
         printf("Sending %d \n",pdx);
-        smolNoiceSendData(testConn,1,&pdx);
+        sn_send(testConn, (uint8_t*)&pdx, 1);
     }
     
 
@@ -77,7 +74,7 @@ void app_main(void)
     smolcert_t *clientCert = (smolcert_t*)malloc(sizeof(smolcert_t));
     sn_buffer_t clientCertBuffer;
     sn_buffer_t rootCertBuffer;
-    sc_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
+    sn_init(&clientCertBuffer,&rootCertBuffer,NULL,NULL,host,9095);
     */
 
 }
