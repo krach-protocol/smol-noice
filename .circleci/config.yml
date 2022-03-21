@@ -14,6 +14,7 @@ jobs:
       - run:
           name: Build test project
           command: |
+            ln -s $(realpath ./) $(realpath ./)/libs/smol-noice
             source /esp/esp-idf/export.sh && cd test-project && idf.py build
 workflows:
   version: 2
