@@ -26,6 +26,7 @@ smolNoice_t* smolNoice(void){
 
 sn_err_t sn_connect(smolNoice_t* smol_noice) {
     SN_ERROR_CHECK(sn_init(smol_noice));
+    
     if(open_socket(smol_noice) != 0) {
         return SN_NET_ERR;
     }
@@ -130,6 +131,7 @@ sc_err_t sn_set_remote_cert_callback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(u
 void sn_free(smolNoice_t* smol_noice) {
     sn_buffer_free(smol_noice->send_buffer);
     sn_buffer_free(smol_noice->receive_buffer);
+    free(smol_noice->hostAddress);
     free(smol_noice);
 }
 

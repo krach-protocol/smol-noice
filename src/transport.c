@@ -3,28 +3,35 @@
 #include "sn_err.h"
 #include "sn_buffer.h"
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/select.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #include <stdlib.h>
 #include <string.h>
 
-uint8_t open_socket(smolNoice_t *smolNoice){
-    struct sockaddr_in serv_addr; 
-    if ((smolNoice->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+uint8_t open_socket(smolNoice_t *smol_noice){
+    struct addrinfo *res;
+    const struct addrinfo hints = {
+        .ai_family = AF_INET,
+        .ai_socktype = SOCK_STREAM,
+    };
+    char service[6];
+    sprintf(service, "%d", smol_noice->hostPort);
+    int err = getaddrinfo(smol_noice->hostAddress, service, &hints, &res);
+    if(err != 0 || res == NULL) {
+        return 1;
+    }
+
+    if ((smol_noice->socket = socket(res->ai_family, res->ai_socktype, 0)) < 0){
         printf("ERROR");
         return 1;	 
     }    
-	
-    serv_addr.sin_family = AF_INET; 
-	serv_addr.sin_port = htons(smolNoice->hostPort);
-	
-    if(inet_pton(AF_INET,  smolNoice->hostAddress, &serv_addr.sin_addr)<=0) {
-        printf("ERROR");
-        return 1; 
-    }
-   
-    printf("Connecting to: %s:%d\n",smolNoice->hostAddress,smolNoice->hostPort);
-   if(connect(smolNoice->socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+
+   if(connect(smol_noice->socket, res->ai_addr, res->ai_addrlen) < 0)
     {
        printf("Error : Connect Failed \n");
        return 1;
@@ -32,7 +39,7 @@ uint8_t open_socket(smolNoice_t *smolNoice){
     return 0;
 }
 void close_socket(smolNoice_t* smol_noice) {
-    close(smol_noice->socket);
+    closesocket(smol_noice->socket);
 }
 
 /* This simply sends a complete buffer to the socket. No length prefixing or anything, but it ensures the

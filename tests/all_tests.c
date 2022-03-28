@@ -11,7 +11,7 @@
 #include <sodium.h>
 #include "handshake.h"
 #include "sc_packet.h"
-#include "sc_err.h"
+#include "sn_err.h"
 
 
 #define CWD_BUF_SIZE 128
