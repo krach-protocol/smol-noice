@@ -39,7 +39,7 @@ uint8_t open_socket(smolNoice_t *smol_noice){
     return 0;
 }
 void close_socket(smolNoice_t* smol_noice) {
-    closesocket(smol_noice->socket);
+    close(smol_noice->socket);
 }
 
 /* This simply sends a complete buffer to the socket. No length prefixing or anything, but it ensures the
