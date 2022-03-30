@@ -30,15 +30,16 @@ endif
 
 COMPILE=gcc
 
-CFLAGS = -std=gnu99
+#CFLAGS = -std=gnu99
+CFLAGS = -std=c11
 CFLAGS += -g 
-#CFLAGS += -Wall
+CFLAGS += -Wall
 CFLAGS += -Wextra
 CFLAGS += -Werror 
 CFLAGS += -Wpointer-arith
 CFLAGS += -Wcast-align
 CFLAGS += -Wwrite-strings
-#CFLAGS += -Wswitch-default
+CFLAGS += -Wswitch-default
 #CFLAGS += -Wunreachable-code
 CFLAGS += -Winit-self
 CFLAGS += -Wmissing-field-initializers
