@@ -38,6 +38,10 @@ sn_err_t sn_connect(smolNoice_t* smol_noice) {
     return SC_OK;
 }
 
+void sn_disconnect(smolNoice_t* smol_noice) {
+    close_socket(smol_noice);
+}
+
 sc_err_t sn_set_host(smolNoice_t* smolNoice,const char* hostAddress,uint16_t hostPort){
     smolNoice->hostPort = hostPort;
     smolNoice->hostAddress = strdup(hostAddress);

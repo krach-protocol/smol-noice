@@ -72,42 +72,51 @@ void test_NoiseName(void) {
 
 void test_readWriteUint16(void) {
   uint8_t testInt[] = {0xE9,0x07};
-  uint16_t i = readUint16((uint8_t*)&testInt);
+  sn_buffer_t* buf = sn_buffer_new(32);
+  sn_buffer_copy_into(buf, testInt, 2);
+  uint16_t i = 0;
+  sn_buffer_read_uint16(buf, &i);
   TEST_ASSERT_EQUAL_MESSAGE(2025, i, "Failed to read little endian integer from byte array");
 
-  uint8_t testBuf[2];
-  uint8_t *testPtr = testBuf;
-  writeUint16(testBuf, 2025);
-  TEST_ASSERT_EQUAL_MESSAGE(0xE9, testBuf[0], "Lower byte of uint16 does not match");
-  TEST_ASSERT_EQUAL_MESSAGE(0x07, testBuf[1], "Upper byte of uint16 does not match");
+  sn_buffer_reset(buf);
+  sn_buffer_write_uint16(buf, 2025);
+  TEST_ASSERT_EQUAL_MESSAGE(0xE9, buf->idx[0], "Lower byte of uint16 does not match");
+  TEST_ASSERT_EQUAL_MESSAGE(0x07, buf->idx[1], "Upper byte of uint16 does not match");
+  sn_buffer_free(buf);
 }
 
 void test_readLVBlock(void) {
   uint8_t lvBlock[] = {0x08,0x00,0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07};
+  sn_buffer_t* buf = sn_buffer_new(64);
+  sn_buffer_copy_into(buf, lvBlock, 10);
   uint8_t* payload;
   uint16_t payloadLen;
-  sc_err_t err = readLVBlock((uint8_t*)&lvBlock, 10, &payload, &payloadLen);
-  TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "readLVBlock returned an error");
+  sn_buffer_read_uint16(buf, &payloadLen);
+  payload = (uint8_t*)malloc(payloadLen);
+  sn_buffer_read_lv_block(buf, payload, payloadLen);
+  sn_buffer_free(buf);
   TEST_ASSERT_EQUAL_MESSAGE(8, payloadLen, "Failed to read correct payload length");
   TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE((uint8_t*)&lvBlock[2], payload, 8, "Failed to read correct payload from lv block");
 }
 
 void test_writeLVBlock(void) {
   uint8_t dataBlock[] = {0x01,0x02,0x03};
-  uint8_t buf[5];
-  uint16_t outLen;
-  sc_err_t err = writeLVBlock((uint8_t*)&buf, 5, (uint8_t*)&dataBlock, 3, &outLen);
-  TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "writeLVBlock returned an error");
-  uint16_t readLength = readUint16((uint8_t*)&buf);
+  sn_buffer_t* buf = sn_buffer_new(64);
+
+  sn_buffer_write_lv_block(buf, dataBlock, 3);
+  sn_buffer_rewind(buf);
+  uint16_t readLength = 0;
+  sn_buffer_read_uint16(buf, &readLength);
   TEST_ASSERT_EQUAL_MESSAGE(3, readLength, "Found invalid length at beginning of LV Block");
-  TEST_ASSERT_EQUAL_MESSAGE(0x01, buf[2], "Invalid data in LV Block");
-  TEST_ASSERT_EQUAL_MESSAGE(0x02, buf[3], "Invalid data in LV Block");
-  TEST_ASSERT_EQUAL_MESSAGE(0x03, buf[4], "Invalid data in LV Block");
+  TEST_ASSERT_EQUAL_MESSAGE(0x01, buf->idx[2], "Invalid data in LV Block");
+  TEST_ASSERT_EQUAL_MESSAGE(0x02, buf->idx[3], "Invalid data in LV Block");
+  TEST_ASSERT_EQUAL_MESSAGE(0x03, buf->idx[4], "Invalid data in LV Block");
+  sn_buffer_free(buf);
 }
 
 void test_unpackHandshakeResponse(void){
-  sn_msg_t testMsg = {0};
-  sc_handshakeResponsePacket testPacket = {0};
+  sn_buffer_t* buf = sn_buffer_new(256);
+  sn_handshake_response_packet testPacket = {0};
   sc_err_t err = Sc_No_Error;
   time_t t;
 
@@ -122,31 +131,27 @@ void test_unpackHandshakeResponse(void){
                                   0xA7 ,0xB8 ,0xA5 ,0x65 ,0x5C ,0xB3 ,0x85 ,0x1C , \
                                   0x74 ,0x4A ,0xFD ,0x69 ,0xEC ,0x95 ,0x9E ,0x29};
 
-  testMsg.msgBuf = (uint8_t*)calloc(1,(size_t)totalLen+3);
-  testMsg.msgLen = totalLen+2;
-  testMsg.msgBuf[0] = RESPONSE_PACKET_TYPE;
-  testMsg.msgBuf[1] = totalLen&0xFF;
-  testMsg.msgBuf[2] = (totalLen&0xFF00 )>>8;
-  
-  memcpy((uint8_t*)&(testMsg.msgBuf[3]),dummyPubkey,32);
-  testMsg.msgBuf[35] = smolcertLen&0xFF;
-  testMsg.msgBuf[36] = (smolcertLen&0xFF00)>>8;
-
+  buf->idx[0] = RESPONSE_PACKET_TYPE;
+  buf->len += 1;
+  sn_buffer_write_uint16(buf, totalLen);
+  sn_buffer_copy_into(buf, (uint8_t*)&dummyPubkey, 32);
+  uint8_t* mock_cert = (uint8_t*)malloc(smolcertLen);
   for(uint8_t rIdx = 0; rIdx < smolcertLen; rIdx++){
-    testMsg.msgBuf[37+rIdx] = (uint8_t)rand();
+    mock_cert[rIdx] = (uint8_t)rand();
   }
+  sn_buffer_write_lv_block(buf, mock_cert, smolcertLen);
 
-  err = unpackHandshakeResponse(&testPacket, &testMsg);
+  err = unpack_handshake_response(&testPacket, buf);
   TEST_ASSERT_EQUAL_MESSAGE(Sc_No_Error,err,"Failed to unpack message");
 
   TEST_ASSERT_EQUAL_MESSAGE(RESPONSE_PACKET_TYPE,testPacket.HandshakeType, "Failed to parse messagetype");
   TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&dummyPubkey,testPacket.ephemeralPubKey,32,"Failed to parse ephemeral public key");
 
-  TEST_ASSERT_EQUAL_MESSAGE(smolcertLen,testPacket.smolcertLen,"Wrong smolcert length // Failed to parse smolcert length");
-  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&(testMsg.msgBuf[37]),testPacket.smolcert,smolcertLen,"Failed to parse smolcert");
+  TEST_ASSERT_EQUAL_MESSAGE(smolcertLen,testPacket.smolcert->len,"Wrong smolcert length // Failed to parse smolcert length");
+  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&(buf->idx[37]),testPacket.smolcert,smolcertLen,"Failed to parse smolcert");
 
   free(testPacket.ephemeralPubKey);
-  free(testMsg.msgBuf);
+  sn_buffer_free(buf);
 }
 
 
@@ -154,7 +159,6 @@ void test_packHandshakeInit(void){
   uint8_t handshakeTestVektor[] = {INIT_PACKET_VERSION, INIT_PACKET_TYPE, INIT_PACKET_LEN,DUMMY_PUBKEY};
   smolcert_t *testCert;
   sc_err_t err;
-  sn_msg_t testMsg;
   sn_buffer_t certBuffer;
   sn_handshake_init_packet testPacket;
   char certFilePath[CWD_BUF_SIZE];
@@ -183,15 +187,16 @@ void test_packHandshakeInit(void){
   TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(testCert->public_key,testPacket.ephemeralPubKey,32,"Failed to copy public key");
   
   //pack the packet
-  err = packHandshakeInit(&testPacket,&testMsg);
+  sn_buffer_t* buf = sn_buffer_new(1024);
+  err = pack_handshake_init(&testPacket,buf);
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
 
   //aaaannnndd?
-  TEST_ASSERT_EQUAL_MESSAGE(36,testMsg.msgLen,"Test packet length doesnt match");
-  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(handshakeTestVektor, testMsg.msgBuf,36,"Failed to pack handshake message");
+  TEST_ASSERT_EQUAL_MESSAGE(36,buf->len,"Test packet length doesnt match");
+  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(handshakeTestVektor, buf->idx, 36, "Failed to pack handshake message");
 
   free(testPacket.ephemeralPubKey);
-  free(testMsg.msgBuf);
+  sn_buffer_free(buf);
   free(testCert);
 }
 
@@ -199,17 +204,17 @@ void test_packHandshakeFin(void) {
   sn_handshake_fin_packet pkt;
   pkt.HandshakeType = HANDSHAKE_FIN;
   uint8_t encryptedPayload[2] = { 0x01, 0x02 };
-  pkt.encryptedPayload = (uint8_t*)&encryptedPayload;
-  pkt.encryptedPayloadLen = 2;
+  pkt.encrypted_payload = sn_buffer_new(1024);
+  sn_buffer_copy_into(pkt.encrypted_payload, encryptedPayload, 2);
 
-  sn_msg_t msg;
-  sc_err_t err = packHandshakeFin(&pkt, &msg);
+  sn_buffer_t* buf = sn_buffer_new(1024);
+  sc_err_t err = pack_handshake_fin(&pkt, buf);
   TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "Packing handshake fin packet failed");
-
+  sn_buffer_free(buf);
   //TODO: compare against crafted paket
 }
 
-void test_makeNoiseHandshake(void){
+/*void test_makeNoiseHandshake(void){
   smolcert_t *clientCert = (smolcert_t*)malloc(sizeof(smolcert_t));
   const char* host = "127.0.0.1";
   sc_error_t err;
@@ -231,22 +236,12 @@ void test_makeNoiseHandshake(void){
 
   while(1);
     printf("End");
-}
-
-
-sc_err_t testTransportCallBack(uint8_t* data, uint8_t dataLen){
-  printf("TRANSPORT: Got Data with length %d \n",dataLen);
-  
-  data[12] = '\0';
-    printf("%s\n",data);
-
-  return SC_OK;
-}
+} */
 
 void test_smolNoice(void){
   smolcert_t *clientCert = (smolcert_t*)malloc(sizeof(smolcert_t));
   sc_error_t err = SC_OK;
-  sn_buffer_t clientCertBuffer;
+  sn_buffer_t* clientCertBuffer = sn_buffer_new(256);
   smolNoice_t* smolNoiceTest;
   uint8_t privateKeyBuffer[32];
   char certFilePath[CWD_BUF_SIZE];
@@ -256,7 +251,7 @@ void test_smolNoice(void){
   strcat(certFilePath,CERT_PATH);
   strcat(keyFilePath,KEY_PATH);
   
-  err =  loadSmolCert(certFilePath,&clientCert,&clientCertBuffer);
+  err =  loadSmolCert(certFilePath, &clientCert, clientCertBuffer);
     
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
 
@@ -269,20 +264,16 @@ void test_smolNoice(void){
   err = sn_set_host(smolNoiceTest,"127.0.0.1",9095);
   if(err != Sc_No_Error) return;
 
-  err = sn_set_client_cert(smolNoiceTest,clientCertBuffer.msgBuf,clientCertBuffer.msgLen);
+  err = sn_set_client_cert(smolNoiceTest, clientCertBuffer->idx, clientCertBuffer->len);
   if(err != Sc_No_Error) return;
 
-  err = sn_set_client_priv_key(smolNoiceTest,privateKeyBuffer);
+  err = sn_set_client_priv_key(smolNoiceTest, privateKeyBuffer);
   if(err != Sc_No_Error) return;
 
-  err = smolNoiceSetTransportCallback(smolNoiceTest,testTransportCallBack);
   if(err != Sc_No_Error) return;
   
-  err = smolNoiceStart(smolNoiceTest);
+  err = sn_connect(smolNoiceTest);
 printf("Starting handshake... \n");
-
- while(smolNoiceReadyForTransport(smolNoiceTest) != SC_OK){};
-printf("Ready for Transport... \n");
 
 
    char testBuffer[32];
@@ -291,10 +282,15 @@ printf("Ready for Transport... \n");
     // sleep_ms(50);
     //usleep(10000);
     sprintf(testBuffer,"ping %d", i++);
-    smolNoiceSendData(smolNoiceTest,strlen(testBuffer),(uint8_t*)testBuffer);
+    int n = sn_send(smolNoiceTest, (uint8_t*)testBuffer, strlen(testBuffer));
+    if(n<0) {
+      printf("Failed sending data");
+      break;
+    }
 
   }
-  free(clientCertBuffer.msgBuf);
+  sn_buffer_free(clientCertBuffer);
+  sn_disconnect(smolNoiceTest);
     printf("End");
   while(1);
 }
@@ -324,9 +320,8 @@ int main(void) {
 
 
 // Utility
-sc_error_t loadSmolCert(const char* fileName,smolcert_t** cert,sn_buffer_t* buffer){
+sc_error_t loadSmolCert(const char* fileName, smolcert_t** cert, sn_buffer_t* buffer){
   FILE *fp;
-  size_t bufSize;
   
   sc_error_t sc_err;
   fp = fopen(fileName,"rb");
@@ -337,17 +332,18 @@ sc_error_t loadSmolCert(const char* fileName,smolcert_t** cert,sn_buffer_t* buff
   }
 
   fseek(fp,0,SEEK_END);
-  buffer->msgLen = ftell(fp);
   rewind(fp);
+  size_t file_length = ftell(fp);
+  sn_buffer_ensure_cap(buffer, file_length);
 
-  buffer->msgBuf = (uint8_t*)malloc(buffer->msgLen);
-  fread(buffer->msgBuf,1,buffer->msgLen,fp);
+  fread(buffer->idx,1,file_length,fp);
+  buffer->len = file_length;
 
-  sc_err = sc_parse_certificate(buffer->msgBuf,buffer->msgLen, *cert);
+  sc_err = sc_parse_certificate(buffer->idx,buffer->len, *cert);
   return sc_err;
 }
 
-sc_err_t loadPrivateKey(const char* fileName,uint8_t* privateKey){
+sc_err_t loadPrivateKey(const char* fileName, uint8_t* privateKey){
   FILE *fp;
   fp = fopen(fileName,"rb");
   
