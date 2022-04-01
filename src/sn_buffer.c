@@ -71,6 +71,7 @@ void sn_buffer_write_uint16(sn_buffer_t* buf, uint16_t val) {
     buf->idx[0] = (val & 0x00FF);
     buf->idx[1] = (val & 0xFF00) >> 8;
     buf->idx += 2;
+    buf->len = 0;
 }
 
 uint16_t sn_buffer_peek_lv_len(sn_buffer_t* buf) {
@@ -103,7 +104,7 @@ sn_err_t sn_buffer_read(sn_buffer_t* buf, uint8_t* dest, size_t len) {
     if(buf->len < len) {
         return SC_PAKET_ERR;
     }
-    memcpy(buf->idx, dest, len);
+    memcpy(dest, buf->idx, len);
     buf->idx += len;
     buf->len -= len;
     return SC_OK;
