@@ -48,12 +48,7 @@ void sn_buffer_resize(sn_buffer_t* buf, size_t new_len) {
 }
 
 void sn_buffer_write_into(sn_buffer_t *buf, uint8_t* in_buf, size_t len) {
-    if((buf->_cap - buf->len) < len) {
-        sn_buffer_resize(buf, (len-(buf->_cap - buf->len)));
-    }
-    memcpy((buf->idx+buf->len), in_buf, len);
-    buf->idx += len;
-    buf->len += len;
+    sn_buffer_write(buf, in_buf, len);
 }
 
 void sn_buffer_ensure_cap(sn_buffer_t *buf, size_t expected_cap) {
