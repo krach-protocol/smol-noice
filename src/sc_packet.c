@@ -100,8 +100,8 @@ sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf){
 
     packet->HandshakeType = HANDSHAKE_FIN;
     packetLen = SN_TYPE_LEN + SN_PACKET_LEN_LEN+ SN_ID_LENGTH_LEN + packet->encrypted_identity->len;// + packet->encryptedPayloadLen ;
-    sn_buffer_ensure_cap(buf, (size_t)packetLen);
 
+    sn_buffer_ensure_cap(buf, (size_t)packetLen);
     sn_buffer_write(buf, (uint8_t*)&(packet->HandshakeType), SN_TYPE_LEN);    
     sn_buffer_write_uint16(buf, packetLen - SN_TYPE_LEN - SN_PACKET_LEN_LEN);
 
