@@ -80,6 +80,7 @@ void test_readWriteUint16(void) {
 
   sn_buffer_reset(buf);
   sn_buffer_write_uint16(buf, 2025);
+  sn_buffer_rewind(buf);
   TEST_ASSERT_EQUAL_MESSAGE(0xE9, buf->idx[0], "Lower byte of uint16 does not match");
   TEST_ASSERT_EQUAL_MESSAGE(0x07, buf->idx[1], "Upper byte of uint16 does not match");
   sn_buffer_free(buf);
