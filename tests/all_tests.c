@@ -73,7 +73,8 @@ void test_NoiseName(void) {
 void test_readWriteUint16(void) {
   uint8_t testInt[] = {0xE9,0x07};
   sn_buffer_t* buf = sn_buffer_new(32);
-  sn_buffer_copy_into(buf, testInt, 2);
+  sn_buffer_write_into(buf, testInt, 2);
+  sn_buffer_rewind(buf);
   uint16_t i = 0;
   sn_buffer_read_uint16(buf, &i);
   TEST_ASSERT_EQUAL_MESSAGE(2025, i, "Failed to read little endian integer from byte array");
@@ -89,7 +90,8 @@ void test_readWriteUint16(void) {
 void test_readLVBlock(void) {
   uint8_t lvBlock[] = {0x08,0x00,0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07};
   sn_buffer_t* buf = sn_buffer_new(64);
-  sn_buffer_copy_into(buf, lvBlock, 10);
+  sn_buffer_write_into(buf, lvBlock, 10);
+  sn_buffer_rewind(buf);
   uint8_t* payload;
   uint16_t payloadLen = sn_buffer_peek_lv_len(buf);
   payload = (uint8_t*)malloc(payloadLen);
@@ -122,32 +124,33 @@ void test_unpackHandshakeResponse(void){
   srand((unsigned) time(&t));
 
   //Craft test message
-  uint16_t messageLen = 66; //length of packetLen not included 
   uint16_t smolcertLen = 32; //Filling up the payload to divisible by 16 len, for testing
-  uint16_t totalLen = messageLen + smolcertLen; 
+  uint16_t totalLen = 32 + 2 + smolcertLen; 
   const uint8_t dummyPubkey[] = { 0x66 ,0x82 ,0x79 ,0x97 ,0x37 ,0xB7 ,0x6C ,0x17 , \
                                   0xC3 ,0x5B ,0x95 ,0x57 ,0x44 ,0x9A ,0x86 ,0x22 , \
                                   0xA7 ,0xB8 ,0xA5 ,0x65 ,0x5C ,0xB3 ,0x85 ,0x1C , \
                                   0x74 ,0x4A ,0xFD ,0x69 ,0xEC ,0x95 ,0x9E ,0x29};
 
   buf->idx[0] = RESPONSE_PACKET_TYPE;
-  buf->len += 1;
+  buf->idx += 1;
   sn_buffer_write_uint16(buf, totalLen);
-  sn_buffer_copy_into(buf, (uint8_t*)&dummyPubkey, 32);
+  sn_buffer_write(buf, (uint8_t*)&dummyPubkey, 32);
   uint8_t* mock_cert = (uint8_t*)malloc(smolcertLen);
   for(uint8_t rIdx = 0; rIdx < smolcertLen; rIdx++){
     mock_cert[rIdx] = (uint8_t)rand();
   }
   sn_buffer_write_lv_block(buf, mock_cert, smolcertLen);
+  sn_buffer_rewind(buf);
 
   err = unpack_handshake_response(&testPacket, buf);
+  sn_buffer_rewind(buf);
   TEST_ASSERT_EQUAL_MESSAGE(Sc_No_Error,err,"Failed to unpack message");
 
   TEST_ASSERT_EQUAL_MESSAGE(RESPONSE_PACKET_TYPE,testPacket.HandshakeType, "Failed to parse messagetype");
   TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&dummyPubkey,testPacket.ephemeralPubKey,32,"Failed to parse ephemeral public key");
 
   TEST_ASSERT_EQUAL_MESSAGE(smolcertLen,testPacket.smolcert->len,"Wrong smolcert length // Failed to parse smolcert length");
-  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(&(buf->idx[37]),testPacket.smolcert,smolcertLen,"Failed to parse smolcert");
+  TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(testPacket.smolcert->idx, &(buf->idx[37]),smolcertLen,"Failed to parse smolcert");
 
   free(testPacket.ephemeralPubKey);
   sn_buffer_free(buf);
@@ -204,7 +207,7 @@ void test_packHandshakeFin(void) {
   pkt.HandshakeType = HANDSHAKE_FIN;
   uint8_t encryptedPayload[2] = { 0x01, 0x02 };
   pkt.encrypted_payload = sn_buffer_new(1024);
-  sn_buffer_copy_into(pkt.encrypted_payload, encryptedPayload, 2);
+  sn_buffer_write_into(pkt.encrypted_payload, encryptedPayload, 2);
 
   sn_buffer_t* buf = sn_buffer_new(1024);
   sc_err_t err = pack_handshake_fin(&pkt, buf);
@@ -340,7 +343,7 @@ sc_error_t loadSmolCert(const char* fileName, smolcert_t** cert, sn_buffer_t* bu
 
   sc_err = sc_parse_certificate(buffer->idx,buffer->len, *cert);
   if(sc_err != SC_OK) {
-    printf("Failed to parse certificate");
+    printf("Failed to parse certificate\n");
     TEST_ABORT();
   }
   return sc_err;
