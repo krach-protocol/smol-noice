@@ -204,6 +204,8 @@ void test_packHandshakeInit(void){
 
 void test_packHandshakeFin(void) {
   sn_handshake_fin_packet pkt;
+  pkt.encrypted_identity = sn_buffer_new(64);
+  pkt.encrypted_payload = sn_buffer_new(64);
   pkt.HandshakeType = HANDSHAKE_FIN;
   uint8_t encryptedPayload[2] = { 0x01, 0x02 };
   pkt.encrypted_payload = sn_buffer_new(1024);
@@ -309,7 +311,7 @@ int main(void) {
     RUN_TEST(test_packHandshakeInit);
     RUN_TEST(test_unpackHandshakeResponse);
     RUN_TEST(test_NoiseName);
-    //RUN_TEST(test_packHandshakeFin);
+    RUN_TEST(test_packHandshakeFin);
     //RUN_TEST(test_makeNoiseHandshake);
     RUN_TEST(test_smolNoice);
     
