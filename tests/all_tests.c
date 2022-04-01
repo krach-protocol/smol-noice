@@ -91,8 +91,7 @@ void test_readLVBlock(void) {
   sn_buffer_t* buf = sn_buffer_new(64);
   sn_buffer_copy_into(buf, lvBlock, 10);
   uint8_t* payload;
-  uint16_t payloadLen;
-  sn_buffer_read_uint16(buf, &payloadLen);
+  uint16_t payloadLen = sn_buffer_peek_lv_len(buf);
   payload = (uint8_t*)malloc(payloadLen);
   sn_buffer_read_lv_block(buf, payload, payloadLen);
   sn_buffer_free(buf);
