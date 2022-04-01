@@ -79,7 +79,7 @@ void sn_buffer_write_uint16(sn_buffer_t* buf, uint16_t val) {
 
 uint16_t sn_buffer_peek_lv_len(sn_buffer_t* buf) {
     uint16_t result = 0;
-    if(buf->len < 2) {
+    if(buf->len < 1) {
         return 0;
     }
     result += buf->idx[0] | (buf->idx[1] << 8);
