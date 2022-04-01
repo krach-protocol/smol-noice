@@ -48,7 +48,7 @@ void sn_buffer_resize(sn_buffer_t* buf, size_t new_len);
  * @param in_buf 
  * @param len 
  */
-void sn_buffer_copy_into(sn_buffer_t *buf, uint8_t* in_buf, size_t len);
+void sn_buffer_write_into(sn_buffer_t *buf, uint8_t* in_buf, size_t len);
 
 /**
  * @brief Ensure that the given buffer has at least capacity for the expected amount of data

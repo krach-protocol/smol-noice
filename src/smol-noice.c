@@ -74,7 +74,7 @@ int sn_send(smolNoice_t* smol_noice, uint8_t* buf, size_t buf_len) {
         }
         sn_buffer_reset(smol_noice->send_buffer);
         smol_noice->send_buffer->idx += 3; // Enable faster padding and keep space for the length prefix
-        sn_buffer_copy_into(smol_noice->send_buffer, read_ptr, m);
+        sn_buffer_write_into(smol_noice->send_buffer, read_ptr, m);
         sn_buffer_pad(smol_noice->send_buffer);
         read_ptr += m;
         send_data += m;

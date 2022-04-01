@@ -47,11 +47,12 @@ void sn_buffer_resize(sn_buffer_t* buf, size_t new_len) {
     }
 }
 
-void sn_buffer_copy_into(sn_buffer_t *buf, uint8_t* in_buf, size_t len) {
+void sn_buffer_write_into(sn_buffer_t *buf, uint8_t* in_buf, size_t len) {
     if((buf->_cap - buf->len) < len) {
         sn_buffer_resize(buf, (len-(buf->_cap - buf->len)));
     }
     memcpy((buf->idx+buf->len), in_buf, len);
+    buf->idx += len;
     buf->len += len;
 }
 
@@ -126,7 +127,7 @@ sn_err_t sn_buffer_read_uint16(sn_buffer_t* buf, uint16_t* dest) {
 void sn_buffer_write_lv_block(sn_buffer_t* buf, uint8_t* src, uint16_t src_len) {
     sn_buffer_ensure_cap(buf, src_len+2);
     sn_buffer_write_uint16(buf, src_len);
-    memcpy(buf->idx, src, src_len);
+    memcpy(buf->idx+buf->len, src, src_len);
     buf->idx += src_len;
 }
 
