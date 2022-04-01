@@ -335,10 +335,14 @@ sc_error_t loadSmolCert(const char* fileName, smolcert_t** cert, sn_buffer_t* bu
   size_t file_length = ftell(fp);
   sn_buffer_ensure_cap(buffer, file_length);
 
-  fread(buffer->idx,1,file_length,fp);
-  buffer->len = file_length;
+  fread(buffer->idx,file_length,1,fp);
+  buffer->len += file_length;
 
   sc_err = sc_parse_certificate(buffer->idx,buffer->len, *cert);
+  if(sc_err != SC_OK) {
+    printf("Failed to parse certificate");
+    TEST_ABORT();
+  }
   return sc_err;
 }
 
