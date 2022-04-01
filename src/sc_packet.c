@@ -60,13 +60,15 @@ sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buf
     if(( err = sn_buffer_read(buf, (uint8_t*)&(packet->HandshakeType), SN_TYPE_LEN)) != SC_OK) {
         return err;
     }
+ 
     if (packet->HandshakeType != HANDSHAKE_RESPONSE) {
         return SC_PAKET_ERR;
     }
-
+    
     if((err = sn_buffer_read_uint16(buf, &packet_len)) != SC_OK) {
         return err;
     }
+    
     if(packet_len != buf->len) {
         return SC_PAKET_ERR;
     }
