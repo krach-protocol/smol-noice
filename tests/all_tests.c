@@ -105,8 +105,7 @@ void test_writeLVBlock(void) {
 
   sn_buffer_write_lv_block(buf, dataBlock, 3);
   sn_buffer_rewind(buf);
-  uint16_t readLength = 0;
-  sn_buffer_read_uint16(buf, &readLength);
+  uint16_t readLength = sn_buffer_peek_lv_len(buf);
   TEST_ASSERT_EQUAL_MESSAGE(3, readLength, "Found invalid length at beginning of LV Block");
   TEST_ASSERT_EQUAL_MESSAGE(0x01, buf->idx[2], "Invalid data in LV Block");
   TEST_ASSERT_EQUAL_MESSAGE(0x02, buf->idx[3], "Invalid data in LV Block");
