@@ -97,7 +97,7 @@ sn_err_t sn_buffer_read_lv_block(sn_buffer_t* buf, uint8_t* dst, size_t dst_len)
     if(block_len+2 > buf->len) {
         return SC_PAKET_ERR;
     }
-    memcpy(buf->idx+2, dst, block_len);
+    memcpy(dst, buf->idx+2, block_len);
     buf->idx += (size_t)(block_len + 2);
     buf->len -= (block_len + 2);
     return SC_OK;
