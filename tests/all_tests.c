@@ -33,7 +33,7 @@ void sleep_ms(uint16_t);
 sc_err_t testTransportCallBack(uint8_t*, uint8_t);
 
 
-sc_error_t loadSmolCert(const char*,smolcert_t**,sn_buffer_t*);
+sc_error_t loadSmolCert(const char*,smolcert_t**, sn_buffer_t*);
 sc_err_t loadPrivateKey(const char*,uint8_t*);
 
 #define DUMMY_PUBKEY 0x66 ,0x82 ,0x79 ,0x97 ,0x37 ,0xB7 ,0x6C ,0x17 , \
@@ -161,7 +161,7 @@ void test_packHandshakeInit(void){
   uint8_t handshakeTestVektor[] = {INIT_PACKET_VERSION, INIT_PACKET_TYPE, INIT_PACKET_LEN,DUMMY_PUBKEY};
   smolcert_t *testCert;
   sc_err_t err;
-  sn_buffer_t certBuffer;
+  sn_buffer_t* certBuffer = sn_buffer_new(256);
   sn_handshake_init_packet testPacket;
   char certFilePath[CWD_BUF_SIZE];
 
@@ -169,7 +169,7 @@ void test_packHandshakeInit(void){
   testCert = (smolcert_t*)malloc(sizeof(smolcert_t));
   getcwd(certFilePath, CWD_BUF_SIZE);
   strcat(certFilePath,CERT_PATH);
-  err =  loadSmolCert(certFilePath,&testCert,&certBuffer);
+  err =  loadSmolCert(certFilePath, &testCert, certBuffer);
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
 
   
@@ -333,19 +333,20 @@ sc_error_t loadSmolCert(const char* fileName, smolcert_t** cert, sn_buffer_t* bu
   if(fp == NULL){
     TEST_FAIL_MESSAGE("File not found");
   }
-
+  
   fseek(fp,0,SEEK_END);
-  rewind(fp);
   size_t file_length = ftell(fp);
+  rewind(fp);
   sn_buffer_ensure_cap(buffer, file_length);
-
-  fread(buffer->idx,file_length,1,fp);
-  buffer->len += file_length;
+  buffer->len += fread(buffer->idx, file_length, 1, fp);
+  fclose(fp);
 
   sc_err = sc_parse_certificate(buffer->idx,buffer->len, *cert);
   if(sc_err != SC_OK) {
+    sn_buffer_free(buffer);
     TEST_FAIL_MESSAGE("Failed to parse smolcert");
   }
+  sn_buffer_free(buffer);
   return sc_err;
 }
 
@@ -356,7 +357,8 @@ sc_err_t loadPrivateKey(const char* fileName, uint8_t* privateKey){
   if(fp == NULL){
     TEST_FAIL_MESSAGE("File not found");
   }
-  fread(privateKey,1,32,fp);
+  fread(privateKey, 32, 1, fp);
+  fclose(fp);
 
   return SC_OK;
 }
