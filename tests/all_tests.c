@@ -331,8 +331,7 @@ sc_error_t loadSmolCert(const char* fileName, smolcert_t** cert, sn_buffer_t* bu
   fp = fopen(fileName,"rb");
 
   if(fp == NULL){
-    printf("File not found");
-    TEST_ABORT();
+    TEST_FAIL_MESSAGE("File not found");
   }
 
   fseek(fp,0,SEEK_END);
@@ -345,8 +344,7 @@ sc_error_t loadSmolCert(const char* fileName, smolcert_t** cert, sn_buffer_t* bu
 
   sc_err = sc_parse_certificate(buffer->idx,buffer->len, *cert);
   if(sc_err != SC_OK) {
-    printf("Failed to parse certificate\n");
-    TEST_ABORT();
+    TEST_FAIL_MESSAGE("Failed to parse smolcert");
   }
   return sc_err;
 }
@@ -356,8 +354,7 @@ sc_err_t loadPrivateKey(const char* fileName, uint8_t* privateKey){
   fp = fopen(fileName,"rb");
   
   if(fp == NULL){
-    printf("File not found");
-    TEST_ABORT();
+    TEST_FAIL_MESSAGE("File not found");
   }
   fread(privateKey,1,32,fp);
 
