@@ -336,9 +336,10 @@ sc_error_t loadSmolCert(const char* fileName, smolcert_t** cert, sn_buffer_t* bu
   
   fseek(fp,0,SEEK_END);
   size_t file_length = ftell(fp);
+
   rewind(fp);
   sn_buffer_ensure_cap(buffer, file_length);
-  buffer->len += fread(buffer->idx, file_length, 1, fp);
+  buffer->len += fread(buffer->idx, 1, file_length, fp);
   fclose(fp);
 
   sc_err = sc_parse_certificate(buffer->idx,buffer->len, *cert);
