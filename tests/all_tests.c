@@ -18,7 +18,6 @@
 #define CERT_PATH "/tests/krach-test-helper/client.smolcert"
 #define KEY_PATH "/tests/krach-test-helper/client.key"
 
-void test_makeNoiseHandshake(void);
 void test_packHandshakeInit(void);
 void test_unpackHandshakeResponse(void);
 void test_packHandshakeFin(void);
@@ -33,7 +32,7 @@ void sleep_ms(uint16_t);
 sc_err_t testTransportCallBack(uint8_t*, uint8_t);
 
 
-sc_error_t loadSmolCert(const char*,smolcert_t**, sn_buffer_t*);
+sc_error_t loadSmolCert(const char*, smolcert_t*, sn_buffer_t*);
 sc_err_t loadPrivateKey(const char*,uint8_t*);
 
 #define DUMMY_PUBKEY 0x66 ,0x82 ,0x79 ,0x97 ,0x37 ,0xB7 ,0x6C ,0x17 , \
@@ -169,7 +168,7 @@ void test_packHandshakeInit(void){
   testCert = (smolcert_t*)malloc(sizeof(smolcert_t));
   getcwd(certFilePath, CWD_BUF_SIZE);
   strcat(certFilePath,CERT_PATH);
-  err =  loadSmolCert(certFilePath, &testCert, certBuffer);
+  err =  loadSmolCert(certFilePath, testCert, certBuffer);
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
 
   
@@ -199,6 +198,7 @@ void test_packHandshakeInit(void){
 
   free(testPacket.ephemeralPubKey);
   sn_buffer_free(buf);
+  sn_buffer_free(certBuffer);
   free(testCert);
 }
 
@@ -243,7 +243,7 @@ void test_packHandshakeFin(void) {
 } */
 
 void test_smolNoice(void){
-  smolcert_t *clientCert = (smolcert_t*)malloc(sizeof(smolcert_t));
+  smolcert_t* clientCert = (smolcert_t*)calloc(1, sizeof(smolcert_t));
   sc_error_t err = SC_OK;
   sn_buffer_t* clientCertBuffer = sn_buffer_new(256);
   smolNoice_t* smolNoiceTest;
@@ -255,8 +255,8 @@ void test_smolNoice(void){
   strcat(certFilePath,CERT_PATH);
   strcat(keyFilePath,KEY_PATH);
   
-  err =  loadSmolCert(certFilePath, &clientCert, clientCertBuffer);
-    
+  err =  loadSmolCert(certFilePath, clientCert, clientCertBuffer);
+  sn_buffer_rewind(clientCertBuffer);
   TEST_ASSERT_EQUAL(err , Sc_No_Error);
 
   err = loadPrivateKey(keyFilePath,privateKeyBuffer);
@@ -265,7 +265,7 @@ void test_smolNoice(void){
   smolNoiceTest = smolNoice();
   if(smolNoiceTest == NULL) return; 
 
-  err = sn_set_host(smolNoiceTest,"127.0.0.1",9095);
+  err = sn_set_host(smolNoiceTest,"127.0.0.1", 9095);
   if(err != Sc_No_Error) return;
 
   err = sn_set_client_cert(smolNoiceTest, clientCertBuffer->idx, clientCertBuffer->len);
@@ -275,10 +275,9 @@ void test_smolNoice(void){
   if(err != Sc_No_Error) return;
 
   if(err != Sc_No_Error) return;
-  
-  err = sn_connect(smolNoiceTest);
-printf("Starting handshake... \n");
 
+  err = sn_connect(smolNoiceTest);
+  TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "Connect failed");
 
    char testBuffer[32];
    uint32_t i = 0;
@@ -312,7 +311,6 @@ int main(void) {
     RUN_TEST(test_unpackHandshakeResponse);
     RUN_TEST(test_NoiseName);
     RUN_TEST(test_packHandshakeFin);
-    //RUN_TEST(test_makeNoiseHandshake);
     RUN_TEST(test_smolNoice);
     
 
@@ -324,7 +322,7 @@ int main(void) {
 
 
 // Utility
-sc_error_t loadSmolCert(const char* fileName, smolcert_t** cert, sn_buffer_t* buffer){
+sc_error_t loadSmolCert(const char* fileName, smolcert_t* cert, sn_buffer_t* buffer){
   FILE *fp;
   
   sc_error_t sc_err;
@@ -342,12 +340,11 @@ sc_error_t loadSmolCert(const char* fileName, smolcert_t** cert, sn_buffer_t* bu
   buffer->len += fread(buffer->idx, 1, file_length, fp);
   fclose(fp);
 
-  sc_err = sc_parse_certificate(buffer->idx,buffer->len, *cert);
+  sc_err = sc_parse_certificate(buffer->idx,buffer->len, cert);
   if(sc_err != SC_OK) {
-    sn_buffer_free(buffer);
     TEST_FAIL_MESSAGE("Failed to parse smolcert");
   }
-  sn_buffer_free(buffer);
+
   return sc_err;
 }
 

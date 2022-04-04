@@ -60,6 +60,7 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
         sn_buffer_free(buf);
         return err;
     }
+    
     if((err = sn_send_buffer(smol_noice->socket, buf)) != SC_OK) {
         sn_buffer_free(buf);
         return err;
@@ -74,27 +75,30 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
         sn_buffer_free(buf);
         return Sc_Validation_Error;
     }
+    
     buf->idx++;
+    buf->len--;
     uint16_t pkt_len = 0;
     err = sn_buffer_read_uint16(buf, &pkt_len);
     if(err != SC_OK) {
         sn_buffer_free(buf);
         return err;
     }
-
+    
     if(( err = sn_read_from_socket(smol_noice->socket, buf, pkt_len)) != SC_OK) {
         sn_buffer_free(buf);
         return err;
     }
     sn_buffer_rewind(buf);
-
-    sn_handshake_response_packet rsp_pkt;
+    
+    sn_handshake_response_packet rsp_pkt = {0};
     if(( err = unpack_handshake_response(&rsp_pkt, buf)) != SC_OK) {
         sn_buffer_free(buf);
         sn_buffer_free(rsp_pkt.smolcert);
         sn_buffer_free(rsp_pkt.payload);
         return err;
     }
+    
     sn_buffer_reset(buf);
     if(( err = readMessageE_DHEE_S_DHES(smol_noice, &rsp_pkt)) != SC_OK) {
         sn_buffer_free(buf);
@@ -102,8 +106,8 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
     }
     sn_buffer_free(rsp_pkt.smolcert);
     sn_buffer_free(rsp_pkt.payload);
-
-    sn_handshake_fin_packet fin_pkt;
+    
+    sn_handshake_fin_packet fin_pkt = {0};
     if(( err = writeMessageS_DHSE(smol_noice, &fin_pkt)) != SC_OK) {
         sn_buffer_free(buf);
         return err;
@@ -118,13 +122,13 @@ sc_err_t run_handshake(smolNoice_t* smol_noice) {
         sn_buffer_free(fin_pkt.encrypted_payload);
         return err;
     }
+    
     sn_buffer_free(fin_pkt.encrypted_identity);
     sn_buffer_free(fin_pkt.encrypted_payload);
     if((err = sn_split_cipher(smol_noice)) != SC_OK) {
         sn_buffer_free(buf);
         return err;
     }
-
     sn_buffer_free(buf);
     return err;
 }

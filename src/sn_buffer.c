@@ -4,7 +4,7 @@
 #include <string.h>
 
 sn_buffer_t* sn_buffer_new(size_t _cap){
-    sn_buffer_t* buf = (sn_buffer_t*)malloc(sizeof(sn_buffer_t));
+    sn_buffer_t* buf = (sn_buffer_t*)calloc(1, sizeof(sn_buffer_t));
     buf->_orig_ptr = (uint8_t*)calloc(1, _cap);
     buf->idx = buf->_orig_ptr;
     buf->_cap = _cap;

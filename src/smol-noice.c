@@ -18,7 +18,7 @@ sc_err_t defaultCertCallback(uint8_t*,uint8_t,smolcert_t*);
 smolNoice_t* smolNoice(void){
     smolNoice_t *smolNoice = (smolNoice_t*)calloc(1,sizeof(smolNoice_t));
     smolNoice->certCallback = defaultCertCallback;
-    size_t buffer_size = SN_MAX_FRAME_SIZE * 16 /*Max padding*/ + 16 /* MAC*/ + 1 /*padding prefix*/ + 2 /*length prefix*/;
+    size_t buffer_size = SN_MAX_FRAME_SIZE + 16 /*Max padding*/ + 16 /* MAC*/ + 1 /*padding prefix*/ + 2 /*length prefix*/;
     smolNoice->receive_buffer = sn_buffer_new(buffer_size);
     smolNoice->send_buffer = sn_buffer_new(buffer_size);
     return smolNoice;
@@ -31,6 +31,7 @@ sn_err_t sn_connect(smolNoice_t* smol_noice) {
         return SN_NET_ERR;
     }
     sn_err_t err = run_handshake(smol_noice);
+    
     if(err != SC_OK) {
         close_socket(smol_noice);
         return err;

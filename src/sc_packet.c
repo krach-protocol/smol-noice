@@ -57,10 +57,16 @@ sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buf
     uint16_t packet_len = 0;
 
     sc_err_t err = SC_OK;
-    if(( err = sn_buffer_read(buf, (uint8_t*)&(packet->HandshakeType), SN_TYPE_LEN)) != SC_OK) {
+    /*if(( err = sn_buffer_read(buf, (uint8_t*)&(packet->HandshakeType), SN_TYPE_LEN)) != SC_OK) {
         return err;
+    }*/
+    if(buf->len < 3) {
+        return SC_PAKET_ERR;
     }
- 
+    packet->HandshakeType = buf->idx[0];
+    buf->idx++;
+    buf->len--;
+    
     if (packet->HandshakeType != HANDSHAKE_RESPONSE) {
         return SC_PAKET_ERR;
     }
@@ -68,12 +74,11 @@ sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buf
     if((err = sn_buffer_read_uint16(buf, &packet_len)) != SC_OK) {
         return err;
     }
-    
-    if(packet_len != buf->len) {
+    if((size_t)(packet_len) != buf->len) {
         return SC_PAKET_ERR;
     }
-
-    packet->ephemeralPubKey = (uint8_t*)calloc(SN_EPHEMERAL_PUB_KEY_LEN,sizeof(uint8_t));
+    
+    packet->ephemeralPubKey = (uint8_t*)calloc(SN_EPHEMERAL_PUB_KEY_LEN, 1);
     if((err = sn_buffer_read(buf, (uint8_t*)(packet->ephemeralPubKey), SN_EPHEMERAL_PUB_KEY_LEN)) != SC_OK ) {
         return err;
     }
