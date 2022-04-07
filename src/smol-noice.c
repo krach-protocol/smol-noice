@@ -79,6 +79,9 @@ int sn_send(smolNoice_t* smol_noice, uint8_t* buf, size_t buf_len) {
         sn_buffer_pad(smol_noice->send_buffer);
         read_ptr += m;
         send_data += m;
+        sn_buffer_rewind(smol_noice->send_buffer);
+        smol_noice->send_buffer->idx += 2;
+        smol_noice->send_buffer->len -= 2;
         
         NoiseBuffer txBuffer;
         sn_buffer_ensure_cap(smol_noice->send_buffer, smol_noice->send_buffer->len + 16); // Ensure we have enough space for the MAC
@@ -90,6 +93,7 @@ int sn_send(smolNoice_t* smol_noice, uint8_t* buf, size_t buf_len) {
         uint16_t pkt_len = smol_noice->send_buffer->len;
         sn_buffer_rewind(smol_noice->send_buffer);
         sn_buffer_write_uint16(smol_noice->send_buffer, pkt_len);
+        sn_buffer_rewind(smol_noice->send_buffer);
         sn_err_t err = sn_send_buffer(smol_noice->socket, smol_noice->send_buffer);
         if(err != SC_OK) {
             return -2;
