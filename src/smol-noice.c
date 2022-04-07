@@ -92,8 +92,11 @@ int sn_send(smolNoice_t* smol_noice, uint8_t* buf, size_t buf_len) {
         smol_noice->send_buffer->len += 16; //We have now the MAC appended
         uint16_t pkt_len = smol_noice->send_buffer->len;
         sn_buffer_rewind(smol_noice->send_buffer);
+        size_t buf_len = smol_noice->send_buffer->len;
         sn_buffer_write_uint16(smol_noice->send_buffer, pkt_len);
-        sn_buffer_rewind(smol_noice->send_buffer);
+        // Rewind won't work correctly here as it would discard everything after the uint16 write
+        smol_noice->send_buffer->idx = smol_noice->send_buffer->_orig_ptr;
+        smol_noice->send_buffer->len = buf_len;
         sn_err_t err = sn_send_buffer(smol_noice->socket, smol_noice->send_buffer);
         if(err != SC_OK) {
             return -2;

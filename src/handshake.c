@@ -158,6 +158,8 @@ sc_err_t writeMessageS(smolNoice_t* smolNoice, sn_handshake_fin_packet* packet){
     cert_buffer->idx += 1; // Give the buffer more chance for more efficient padding
     sn_buffer_ensure_cap(cert_buffer, smolNoice->clientCertLen + 33); // Ensure we have enough memory for padding + MAC
     sn_buffer_write_into(cert_buffer, smolNoice->clientCert, smolNoice->clientCertLen);
+    sn_buffer_rewind(cert_buffer);
+    cert_buffer->idx += 1; // Give the buffer more chance for more efficient padding
     SC_ERROR_CHECK(sn_buffer_pad(cert_buffer));
     sn_buffer_ensure_cap(cert_buffer, cert_buffer->len + 16); // Ensure we have enough memory reserved for the MAC
     

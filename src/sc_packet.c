@@ -10,18 +10,6 @@
  *
  * */
 
-void printHex(uint8_t*,uint8_t);
-void printHex(uint8_t* key,uint8_t keyLen){
-  for(uint8_t i = 0; i < keyLen; i++)
-  {
-    if(i%16 == 0) printf("\n");
-    printf("%02x ",key[i]);
-    
-  }
-  printf("\n");
-  return;
-}
-
 /** Little sidenote:
  * See unpacking and packing discussion here:
  * https://stackoverflow.com/questions/19165134/correct-portable-way-to-interpret-buffer-as-a-struct
@@ -101,6 +89,7 @@ sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buf
 
 
 sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf){
+    sn_buffer_reset(buf);
     uint16_t packetLen;
 
     packet->HandshakeType = HANDSHAKE_FIN;
@@ -111,7 +100,7 @@ sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf){
     sn_buffer_write_uint16(buf, packetLen - SN_TYPE_LEN - SN_PACKET_LEN_LEN);
 
     sn_buffer_write_lv_block(buf, packet->encrypted_identity->idx, packet->encrypted_identity->len);    
-
+    sn_buffer_rewind(buf);
     return SC_OK;
 }
 

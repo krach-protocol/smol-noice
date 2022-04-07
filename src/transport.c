@@ -13,6 +13,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+void printHex(uint8_t*,uint8_t);
+void printHex(uint8_t* key,uint8_t keyLen){
+  for(uint8_t i = 0; i < keyLen; i++)
+  {
+    if(i%16 == 0) printf("\n");
+    printf("%02x ",key[i]);
+    
+  }
+  printf("\n");
+  return;
+}
+
 uint8_t open_socket(smolNoice_t *smol_noice){
     struct addrinfo *res;
     const struct addrinfo hints = {
@@ -46,8 +58,11 @@ void close_socket(smolNoice_t* smol_noice) {
    the complete buffer is written */
 sn_err_t sn_send_buffer(int socket, sn_buffer_t* buf) {
     size_t sent_bytes = 0;
+    printf("Sending buffer with length %ld\n", buf->len);
     while(sent_bytes < buf->len) {
         int n = send(socket, buf->idx + sent_bytes, buf->len - sent_bytes, 0);
+        printf("Sending data: ");
+        printHex(buf->idx + sent_bytes,  buf->len - sent_bytes);
         if(n < 0) {
             return SN_NET_ERR;
         }
