@@ -58,11 +58,8 @@ void close_socket(smolNoice_t* smol_noice) {
    the complete buffer is written */
 sn_err_t sn_send_buffer(int socket, sn_buffer_t* buf) {
     size_t sent_bytes = 0;
-    printf("Sending buffer with length %ld\n", buf->len);
     while(sent_bytes < buf->len) {
         int n = send(socket, buf->idx + sent_bytes, buf->len - sent_bytes, 0);
-        printf("Sending data: ");
-        printHex(buf->idx + sent_bytes,  buf->len - sent_bytes);
         if(n < 0) {
             return SN_NET_ERR;
         }
