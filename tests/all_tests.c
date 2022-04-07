@@ -280,17 +280,25 @@ void test_smolNoice(void){
   TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "Connect failed");
 
    char testBuffer[32];
+   uint8_t receiveBuffer[32];
    uint32_t i = 0;
-  while(1){
+  while(1024){
     // sleep_ms(50);
     //usleep(10000);
     sprintf(testBuffer,"ping %d", i++);
+    printf("Sending data: %s\n", testBuffer);
     int n = sn_send(smolNoiceTest, (uint8_t*)testBuffer, strlen(testBuffer));
     if(n<0) {
-      printf("Failed sending data");
+      printf("Failed sending data\n");
       break;
     }
-
+    printf("Waiting to receive data\n");
+    n = sn_recv(smolNoiceTest, receiveBuffer, 32);
+    if(n < 0) {
+      printf("Failed to read data\n");
+      break;
+    }
+    TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(testBuffer, receiveBuffer, n, "Echoed data does not match received data");
   }
   sn_buffer_free(clientCertBuffer);
   sn_disconnect(smolNoiceTest);
