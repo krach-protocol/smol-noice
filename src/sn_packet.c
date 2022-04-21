@@ -1,4 +1,4 @@
-#include "sc_packet.h"
+#include "sn_packet.h"
 #include "sn_err.h"
 #include "sn_buffer.h"
 #include <stdlib.h>

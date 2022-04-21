@@ -45,7 +45,7 @@ typedef struct{
     sn_packet_type_e    PaketType;
     uint8_t             encryptedPayloadLen;
     uint8_t*            encryptedPayload;
-} sc_transportPacket;
+} sn_transport_packet;
 
 /**
  * Function: packHandshakeInit

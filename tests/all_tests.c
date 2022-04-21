@@ -10,7 +10,7 @@
 
 #include <sodium.h>
 #include "handshake.h"
-#include "sc_packet.h"
+#include "sn_packet.h"
 #include "sn_err.h"
 
 

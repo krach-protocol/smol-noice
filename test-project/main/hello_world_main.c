@@ -15,11 +15,6 @@
 
 #include <sodium.h>
 
-/*#include "handshake.h"
-#include "sc_packet.h"
-#include "sc_err.h"
-*/
-
 #include "smol-noice.h"
 
 sc_err_t clientCb(uint8_t* data, uint8_t len);

@@ -5,7 +5,7 @@
 
 #include "sn_err.h"
 #include "sn_buffer.h"
-#include "sc_packet.h"
+#include "sn_packet.h"
 #include "smol-noice.h"
 
 sc_err_t sn_init(smolNoice_t* smolNoice);
