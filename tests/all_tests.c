@@ -26,6 +26,7 @@ void test_readLVBlock(void);
 void test_writeLVBlock(void);
 void test_NoiseName(void);
 void test_smolNoice(void);
+void test_bufferPadding(void);
 void sleep_ms(uint16_t);
 
 
@@ -67,6 +68,34 @@ void test_NoiseName(void) {
   TEST_ASSERT_EQUAL_MESSAGE(NOISE_ERROR_NONE, err, "Formatting of noise protocol name failed");
   TEST_ASSERT_EQUAL_STRING_MESSAGE("Krach_XX_25519_ChaChaPoly_BLAKE2s", name, "krach protocol name does not match");
   free(krach);
+}
+
+void test_bufferPadding(void) {
+  uint8_t testData[] = {0x01,0x02,0x03};
+
+  sn_buffer_t* buf = sn_buffer_new(512);
+  sn_buffer_write(buf, testData, 3);
+  sn_buffer_rewind(buf);
+  sn_buffer_pad(buf);
+
+  TEST_ASSERT_EQUAL_INT_MESSAGE(16, buf->len, "Wrong length of padded buffer");
+  TEST_ASSERT_EQUAL_INT8_MESSAGE(12, buf->idx[0], "Wrong padding header");
+  TEST_ASSERT_EQUAL_INT8_MESSAGE(0x01, buf->idx[1], "Wrong first byte of payload");
+  TEST_ASSERT_EQUAL_INT8_MESSAGE(0, buf->idx[5], "Padded bytes are not null");
+  sn_buffer_free(buf);
+
+  buf = sn_buffer_new(512);
+  // Reserve space in front
+  buf->idx += 1;
+  sn_buffer_write(buf, testData, 3);
+  buf->idx = buf->_orig_ptr+1;
+  buf->len = 3;
+  sn_buffer_pad(buf);
+  TEST_ASSERT_EQUAL_INT_MESSAGE(16, buf->len, "Wrong length of padded buffer");
+  TEST_ASSERT_EQUAL_INT8_MESSAGE(12, buf->idx[0], "Wrong padding header");
+  TEST_ASSERT_EQUAL_INT8_MESSAGE(0x01, buf->idx[1], "Wrong first byte of payload");
+  TEST_ASSERT_EQUAL_INT8_MESSAGE(0, buf->idx[5], "Padded bytes are not null");
+  sn_buffer_free(buf);
 }
 
 void test_readWriteUint16(void) {
@@ -281,8 +310,8 @@ void test_smolNoice(void){
 
    char testBuffer[32];
    uint8_t receiveBuffer[32];
-   uint32_t i = 0;
-  while(1024){
+   uint32_t i = 5;
+  while(i < 1024){
     // sleep_ms(50);
     //usleep(10000);
     sprintf(testBuffer,"ping %d", i++);
@@ -296,14 +325,15 @@ void test_smolNoice(void){
     n = sn_recv(smolNoiceTest, receiveBuffer, 32);
     if(n < 0) {
       printf("Failed to read data\n");
+      TEST_FAIL_MESSAGE("Failed to read data");
       break;
     }
+    printf("Received data: %s\n", receiveBuffer);
     TEST_ASSERT_EQUAL_HEX8_ARRAY_MESSAGE(testBuffer, receiveBuffer, n, "Echoed data does not match received data");
   }
   sn_buffer_free(clientCertBuffer);
   sn_disconnect(smolNoiceTest);
     printf("End");
-  while(1);
 }
 
 int main(void) {
@@ -319,6 +349,7 @@ int main(void) {
     RUN_TEST(test_unpackHandshakeResponse);
     RUN_TEST(test_NoiseName);
     RUN_TEST(test_packHandshakeFin);
+    RUN_TEST(test_bufferPadding);
     RUN_TEST(test_smolNoice);
     
 
