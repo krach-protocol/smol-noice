@@ -4,23 +4,13 @@
 #include <noise/protocol.h>
 
 
-typedef enum errorType {SC_OK=0,SC_ERR=1,SC_PAKET_ERR=2, SN_NET_ERR=10} sc_err_t, sn_err_t;
-
-#define SC_ERROR_CHECK(error) \
-    if(error != SC_OK) return SC_ERR;
+typedef enum errorType {SN_OK=0,SN_ERR=1,SN_PAKET_ERR=2, SN_NET_ERR=10} sn_err_t;
 
 #define SN_ERROR_CHECK(error) \
-    if(error != SC_OK) return error;
+    if(error != SN_OK) return error;
 
-#define STATE_ERROR_CHECK(error) \
-    if(error != SC_OK){ \
-         taskData->handShakeStep = ERROR; \
-        continue; \
-    } 
-sc_err_t printNoiseErr(int);
+sn_err_t printNoiseErr(int);
 #define NOISE_ERROR_CHECK(error) \
-    if(printNoiseErr(error) != SC_OK) return SC_ERR;
-
-
+    if(printNoiseErr(error) != SN_OK) return SN_ERR;
 
 #endif

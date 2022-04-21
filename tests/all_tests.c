@@ -30,11 +30,11 @@ void test_bufferPadding(void);
 void sleep_ms(uint16_t);
 
 
-sc_err_t testTransportCallBack(uint8_t*, uint8_t);
+sn_err_t testTransportCallBack(uint8_t*, uint8_t);
 
 
 sc_error_t loadSmolCert(const char*, smolcert_t*, sn_buffer_t*);
-sc_err_t loadPrivateKey(const char*,uint8_t*);
+sn_err_t loadPrivateKey(const char*,uint8_t*);
 
 #define DUMMY_PUBKEY 0x66 ,0x82 ,0x79 ,0x97 ,0x37 ,0xB7 ,0x6C ,0x17 , \
                       0xC3 ,0x5B ,0x95 ,0x57 ,0x44 ,0x9A ,0x86 ,0x22 , \
@@ -146,7 +146,7 @@ void test_writeLVBlock(void) {
 void test_unpackHandshakeResponse(void){
   sn_buffer_t* buf = sn_buffer_new(256);
   sn_handshake_response_packet testPacket = {0};
-  sc_err_t err = Sc_No_Error;
+  sn_err_t err = Sc_No_Error;
   time_t t;
 
   srand((unsigned) time(&t));
@@ -188,7 +188,7 @@ void test_unpackHandshakeResponse(void){
 void test_packHandshakeInit(void){
   uint8_t handshakeTestVektor[] = {INIT_PACKET_VERSION, INIT_PACKET_TYPE, INIT_PACKET_LEN,DUMMY_PUBKEY};
   smolcert_t *testCert;
-  sc_err_t err;
+  sn_err_t err;
   sn_buffer_t* certBuffer = sn_buffer_new(256);
   sn_handshake_init_packet testPacket;
   char certFilePath[CWD_BUF_SIZE];
@@ -241,8 +241,8 @@ void test_packHandshakeFin(void) {
   sn_buffer_write_into(pkt.encrypted_payload, encryptedPayload, 2);
 
   sn_buffer_t* buf = sn_buffer_new(1024);
-  sc_err_t err = pack_handshake_fin(&pkt, buf);
-  TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "Packing handshake fin packet failed");
+  sn_err_t err = pack_handshake_fin(&pkt, buf);
+  TEST_ASSERT_EQUAL_MESSAGE(SN_OK, err, "Packing handshake fin packet failed");
   sn_buffer_free(buf);
   //TODO: compare against crafted paket
 }
@@ -273,7 +273,7 @@ void test_packHandshakeFin(void) {
 
 void test_smolNoice(void){
   smolcert_t* clientCert = (smolcert_t*)calloc(1, sizeof(smolcert_t));
-  sc_error_t err = SC_OK;
+  sc_error_t err = SN_OK;
   sn_buffer_t* clientCertBuffer = sn_buffer_new(256);
   smolNoice_t* smolNoiceTest;
   uint8_t privateKeyBuffer[32];
@@ -306,7 +306,7 @@ void test_smolNoice(void){
   if(err != Sc_No_Error) return;
 
   err = sn_connect(smolNoiceTest);
-  TEST_ASSERT_EQUAL_MESSAGE(SC_OK, err, "Connect failed");
+  TEST_ASSERT_EQUAL_MESSAGE(SN_OK, err, "Connect failed");
 
    char testBuffer[32];
    uint8_t receiveBuffer[32];
@@ -380,14 +380,14 @@ sc_error_t loadSmolCert(const char* fileName, smolcert_t* cert, sn_buffer_t* buf
   fclose(fp);
 
   sc_err = sc_parse_certificate(buffer->idx,buffer->len, cert);
-  if(sc_err != SC_OK) {
+  if(sc_err != SN_OK) {
     TEST_FAIL_MESSAGE("Failed to parse smolcert");
   }
 
   return sc_err;
 }
 
-sc_err_t loadPrivateKey(const char* fileName, uint8_t* privateKey){
+sn_err_t loadPrivateKey(const char* fileName, uint8_t* privateKey){
   FILE *fp;
   fp = fopen(fileName,"rb");
   
@@ -397,5 +397,5 @@ sc_err_t loadPrivateKey(const char* fileName, uint8_t* privateKey){
   fread(privateKey, 32, 1, fp);
   fclose(fp);
 
-  return SC_OK;
+  return SN_OK;
 }

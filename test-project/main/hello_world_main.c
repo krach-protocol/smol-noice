@@ -17,22 +17,22 @@
 
 #include "smol-noice.h"
 
-sc_err_t clientCb(uint8_t* data, uint8_t len);
+sn_err_t clientCb(uint8_t* data, uint8_t len);
 
-sc_err_t clientCb(uint8_t* data, uint8_t len){
+sn_err_t clientCb(uint8_t* data, uint8_t len){
     for(uint8_t idx = 0; idx < len; idx++){
         printf("%c",data[idx]);
     }
-    return SC_OK;
+    return SN_OK;
 }
 
-sc_err_t remoteCertCb(uint8_t* data, uint8_t len, smolcert_t* remoteCert);
+sn_err_t remoteCertCb(uint8_t* data, uint8_t len, smolcert_t* remoteCert);
 
-sc_err_t remoteCertCb(uint8_t* data, uint8_t len, smolcert_t* remoteCert){
+sn_err_t remoteCertCb(uint8_t* data, uint8_t len, smolcert_t* remoteCert){
     for(uint8_t idx = 0; idx < len; idx++){
         printf("%c",data[idx]);
     }
-    return SC_OK;
+    return SN_OK;
 }
 
 

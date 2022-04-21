@@ -65,7 +65,7 @@ sn_err_t sn_send_buffer(int socket, sn_buffer_t* buf) {
         }
         sent_bytes += n;
     }
-    return SC_OK;
+    return SN_OK;
 }
 
 sn_err_t sn_read_from_socket(int socket, sn_buffer_t* buf, size_t expected_length) {
@@ -79,5 +79,5 @@ sn_err_t sn_read_from_socket(int socket, sn_buffer_t* buf, size_t expected_lengt
         bytes_read += n;
         buf->len += n;
     }
-    return SC_OK;
+    return SN_OK;
 }

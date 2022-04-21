@@ -14,10 +14,10 @@ smolNoice_t* smolNoice(void);
 sn_err_t sn_connect(smolNoice_t* smol_noice);
 void sn_disconnect(smolNoice_t* smol_noice);
 
-sc_err_t sn_set_host(smolNoice_t* smolNoice,const char* hostAddress,uint16_t hostPort);
-sc_err_t sn_set_client_cert(smolNoice_t* smolNoice, uint8_t* clientCert,uint8_t clientCertLen);
-sc_err_t sn_set_client_priv_key(smolNoice_t* smolNoice,uint8_t* privateKey);
-sc_err_t sn_set_remote_cert_callback(smolNoice_t* smolNoice,sc_err_t (*dataCb)(uint8_t*,uint8_t,smolcert_t*));
+sn_err_t sn_set_host(smolNoice_t* smolNoice,const char* hostAddress,uint16_t hostPort);
+sn_err_t sn_set_client_cert(smolNoice_t* smolNoice, uint8_t* clientCert,uint8_t clientCertLen);
+sn_err_t sn_set_client_priv_key(smolNoice_t* smolNoice,uint8_t* privateKey);
+sn_err_t sn_set_remote_cert_callback(smolNoice_t* smolNoice,sn_err_t (*dataCb)(uint8_t*,uint8_t,smolcert_t*));
 
 /**
  * @brief Send data via the encrypted krach connection. Returns the amount of bytes send ot less than 0

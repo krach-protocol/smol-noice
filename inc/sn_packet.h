@@ -55,9 +55,9 @@ typedef struct{
  *  packet:       pointer to prefilled handshakeInit struct  
  *  msgBuffer:    pointer to uint8 array which is allocated in this function
  *  msgLen:       contains the length of msgBuffer
- *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
+ *  return sn_err_t, SN_PAKET_ERR if something went wrong else SN_OK 
  * */
-sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t *msg);
+sn_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t *msg);
 
 /**
  * Function: packHandshakeFin
@@ -67,9 +67,9 @@ sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t *msg)
  *  packet:       pointer to prefilled handshakeFin struct  
  *  msgBuffer:    pointer to uint8 array which is allocated in this function
  *  msgLen:       contains the length of msgBuffer
- *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
+ *  return sn_err_t, SN_PAKET_ERR if something went wrong else SN_OK 
  * */
-sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf);
+sn_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf);
 
 /**
  * Function: unpackHandshakeResponse
@@ -79,8 +79,8 @@ sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf);
  *  packet:       pointer to handshake response struct  
  *  msgBuffer:    pointer to uint8 array from network
  *  msgLen:       contains the length of msgBuffer
- *  return sc_err_t, SC_PAKET_ERR if something went wrong else SC_OK 
+ *  return sn_err_t, SN_PAKET_ERR if something went wrong else SN_OK 
  * */
-sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet, sn_buffer_t *msg);
+sn_err_t unpack_handshake_response(sn_handshake_response_packet* packet, sn_buffer_t *msg);
 
 #endif

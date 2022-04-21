@@ -13,7 +13,7 @@ typedef struct smolNoice
     uint8_t *clientCert;
     uint8_t clientCertLen;
     uint8_t clientPrivateKey[32];
-    sc_err_t (*certCallback)(uint8_t*,uint8_t,smolcert_t*);
+    sn_err_t (*certCallback)(uint8_t*,uint8_t,smolcert_t*);
     NoiseHandshakeState *handshakeState;
     NoiseCipherState *rxCipher;
     NoiseCipherState *txCipher;

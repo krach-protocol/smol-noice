@@ -87,38 +87,38 @@ uint16_t sn_buffer_peek_lv_len(sn_buffer_t* buf) {
 sn_err_t sn_buffer_read_lv_block(sn_buffer_t* buf, uint8_t* dst, size_t dst_len) {
     uint16_t block_len = sn_buffer_peek_lv_len(buf);
     if(block_len == 0) {
-        return SC_OK;
+        return SN_OK;
     }
     if(block_len > dst_len) {
-        return SC_PAKET_ERR;
+        return SN_PAKET_ERR;
     }
     if(block_len+2 > buf->len) {
-        return SC_PAKET_ERR;
+        return SN_PAKET_ERR;
     }
     memcpy(dst, buf->idx+2, block_len);
     buf->idx += (size_t)(block_len + 2);
     buf->len -= (block_len + 2);
-    return SC_OK;
+    return SN_OK;
 }
 
 sn_err_t sn_buffer_read(sn_buffer_t* buf, uint8_t* dest, size_t len) {
     if(buf->len < len) {
-        return SC_PAKET_ERR;
+        return SN_PAKET_ERR;
     }
     memcpy(dest, buf->idx, len);
     buf->idx += len;
     buf->len -= len;
-    return SC_OK;
+    return SN_OK;
 }
 
 sn_err_t sn_buffer_read_uint16(sn_buffer_t* buf, uint16_t* dest) {
     if(buf->len < 2) {
-        return SC_PAKET_ERR;
+        return SN_PAKET_ERR;
     }
     *dest = sn_buffer_peek_lv_len(buf);
     buf->idx += 2;
     buf->len -= 2;
-    return SC_OK;
+    return SN_OK;
 }
 
 void sn_buffer_write_lv_block(sn_buffer_t* buf, uint8_t* src, uint16_t src_len) {
@@ -128,7 +128,7 @@ void sn_buffer_write_lv_block(sn_buffer_t* buf, uint8_t* src, uint16_t src_len) 
     buf->idx += src_len;
 }
 
-sc_err_t sn_buffer_pad(sn_buffer_t* buf){
+sn_err_t sn_buffer_pad(sn_buffer_t* buf){
     size_t bytes_to_pad = 16 - (buf->len+1)%16;
     if(bytes_to_pad == 16) {
         bytes_to_pad = 0;
@@ -150,7 +150,7 @@ sc_err_t sn_buffer_pad(sn_buffer_t* buf){
         buf->idx[i] = 0;
     }
     buf->len = new_len;
-    return SC_OK;
+    return SN_OK;
 
 }
 sn_err_t sn_buffer_unpad(sn_buffer_t* buf){
@@ -158,5 +158,5 @@ sn_err_t sn_buffer_unpad(sn_buffer_t* buf){
     buf->len = buf->len - 1 /*padding header*/ - padded_bytes;
     buf->idx = buf->idx + 1;
 
-    return SC_OK;
+    return SN_OK;
 }

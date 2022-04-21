@@ -21,7 +21,7 @@
  * future changes like expanding field sizes and for better readability
  * */
 
-sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t* buf){
+sn_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t* buf){
     sn_buffer_reset(buf);
     uint8_t version = SN_VERSION;
     packet->HandshakeType = HANDSHAKE_INIT; // Always set the handshake type, doesn't hurt
@@ -38,49 +38,49 @@ sc_err_t pack_handshake_init(sn_handshake_init_packet* packet, sn_buffer_t* buf)
     sn_buffer_write(buf, packet->ephemeralPubKey, SN_EPHEMERAL_PUB_KEY_LEN);
     sn_buffer_rewind(buf);
 
-    return SC_OK;
+    return SN_OK;
 }
 
-sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buffer_t* buf){
+sn_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buffer_t* buf){
     uint16_t packet_len = 0;
 
-    sc_err_t err = SC_OK;
-    /*if(( err = sn_buffer_read(buf, (uint8_t*)&(packet->HandshakeType), SN_TYPE_LEN)) != SC_OK) {
+    sn_err_t err = SN_OK;
+    /*if(( err = sn_buffer_read(buf, (uint8_t*)&(packet->HandshakeType), SN_TYPE_LEN)) != SN_OK) {
         return err;
     }*/
     if(buf->len < 3) {
-        return SC_PAKET_ERR;
+        return SN_PAKET_ERR;
     }
     packet->HandshakeType = buf->idx[0];
     buf->idx++;
     buf->len--;
     
     if (packet->HandshakeType != HANDSHAKE_RESPONSE) {
-        return SC_PAKET_ERR;
+        return SN_PAKET_ERR;
     }
     
-    if((err = sn_buffer_read_uint16(buf, &packet_len)) != SC_OK) {
+    if((err = sn_buffer_read_uint16(buf, &packet_len)) != SN_OK) {
         return err;
     }
     if((size_t)(packet_len) != buf->len) {
-        return SC_PAKET_ERR;
+        return SN_PAKET_ERR;
     }
     
     packet->ephemeralPubKey = (uint8_t*)calloc(SN_EPHEMERAL_PUB_KEY_LEN, 1);
-    if((err = sn_buffer_read(buf, (uint8_t*)(packet->ephemeralPubKey), SN_EPHEMERAL_PUB_KEY_LEN)) != SC_OK ) {
+    if((err = sn_buffer_read(buf, (uint8_t*)(packet->ephemeralPubKey), SN_EPHEMERAL_PUB_KEY_LEN)) != SN_OK ) {
         return err;
     }
     uint16_t smolcert_len = sn_buffer_peek_lv_len(buf);
     packet->smolcert = sn_buffer_new(smolcert_len);
 
-    if((err = sn_buffer_read_lv_block(buf, packet->smolcert->idx, smolcert_len)) != SC_OK) {
+    if((err = sn_buffer_read_lv_block(buf, packet->smolcert->idx, smolcert_len)) != SN_OK) {
         return err;
     }
     packet->smolcert->len = smolcert_len;
 
     uint16_t payload_len = sn_buffer_peek_lv_len(buf);
     packet->payload = sn_buffer_new(payload_len);
-    if((err = sn_buffer_read_lv_block(buf, packet->payload->idx, payload_len)) != SC_OK) {
+    if((err = sn_buffer_read_lv_block(buf, packet->payload->idx, payload_len)) != SN_OK) {
         return err;
     }
     packet->payload->len = payload_len;
@@ -88,7 +88,7 @@ sc_err_t unpack_handshake_response(sn_handshake_response_packet* packet,  sn_buf
 }
 
 
-sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf){
+sn_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf){
     sn_buffer_reset(buf);
     uint16_t packetLen;
 
@@ -101,7 +101,7 @@ sc_err_t pack_handshake_fin(sn_handshake_fin_packet* packet, sn_buffer_t* buf){
 
     sn_buffer_write_lv_block(buf, packet->encrypted_identity->idx, packet->encrypted_identity->len);    
     sn_buffer_rewind(buf);
-    return SC_OK;
+    return SN_OK;
 }
 
 
