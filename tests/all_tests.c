@@ -350,7 +350,7 @@ int main(void) {
     RUN_TEST(test_NoiseName);
     RUN_TEST(test_packHandshakeFin);
     RUN_TEST(test_bufferPadding);
-    RUN_TEST(test_smolNoice);
+    //RUN_TEST(test_smolNoice);
     
 
     return UNITY_END();
